@@ -3,71 +3,122 @@
   "$description": "브라우저(RUM) 모니터링 화면 카탈로그 — 프론트 소스 체계적 검증 완료",
   "$urlPrefix": "/browser/",
   "$maintainer": "TODO: 브라우저 담당자",
-
   "browser_live_stats": {
     "name": "브라우저 모니터링 대시보드",
     "description": "페이지 로드, AJAX, 에러, 세션, Core Web Vitals 통합 대시보드 (ContainerRUM 템플릿)",
     "mxqlPaths": [],
-    "tagCountCategories": ["rum_page_load_each_page", "rum_page_load_browser_each_page", "rum_page_load_count_topn", "rum_page_load_time_topn", "rum_ajax_each_page", "rum_ajax_hitmap", "rum_ajax_load_count", "rum_ajax_load_time_topn", "rum_error_count", "rum_error_each_page", "rum_session_count", "rum_user_session", "rum_web_vitals_each_page", "rum_web_vitals_lcp_time_topn", "rum_web_vitals_fid_time_topn", "rum_web_vitals_cls_time_topn", "rum_country_region_each_page"],
+    "tagCountCategories": [
+      "rum_page_load_each_page",
+      "rum_page_load_browser_each_page",
+      "rum_page_load_count_topn",
+      "rum_page_load_time_topn",
+      "rum_ajax_each_page",
+      "rum_ajax_hitmap",
+      "rum_ajax_load_count",
+      "rum_ajax_load_time_topn",
+      "rum_error_count",
+      "rum_error_each_page",
+      "rum_session_count",
+      "rum_user_session",
+      "rum_web_vitals_each_page",
+      "rum_web_vitals_lcp_time_topn",
+      "rum_web_vitals_fid_time_topn",
+      "rum_web_vitals_cls_time_topn",
+      "rum_country_region_each_page"
+    ],
     "source": "templates/browser_live_stats.json"
   },
-
   "browser_error_stats": {
     "name": "브라우저 에러",
     "description": "에러 유형별, 디바이스별, 페이지별 에러 분석 (ContainerRUM 템플릿)",
     "mxqlPaths": [],
-    "tagCountCategories": ["rum_error_total_each_page", "rum_error_count_by_device", "rum_error_device_each_page", "rum_page_load_each_page", "rum_today_page_load_count"],
+    "tagCountCategories": [
+      "rum_error_total_each_page",
+      "rum_error_count_by_device",
+      "rum_error_device_each_page",
+      "rum_page_load_each_page",
+      "rum_today_page_load_count"
+    ],
     "source": "templates/browser_error_stats.json"
   },
-
   "browser_pageload_stats": {
     "name": "페이지 로드",
     "description": "페이지 로드 성능 대시보드 (ContainerRUM 템플릿)",
     "mxqlPaths": [],
-    "tagCountCategories": ["rum_page_load_each_page", "rum_page_load_ajax_each_page", "rum_page_load_resource_each_page", "rum_router_change_all_page"],
+    "tagCountCategories": [
+      "rum_page_load_each_page",
+      "rum_page_load_ajax_each_page",
+      "rum_page_load_resource_each_page",
+      "rum_router_change_all_page"
+    ],
     "source": "templates/browser_pageload_stats.json"
   },
-
   "browser_resource_stats": {
     "name": "리소스",
     "description": "리소스(JS/CSS/이미지) 로딩 성능 (ContainerRUM 템플릿)",
     "mxqlPaths": [],
-    "tagCountCategories": ["rum_resource_all_page", "rum_resource_each_page"],
+    "tagCountCategories": [
+      "rum_resource_all_page",
+      "rum_resource_each_page"
+    ],
     "source": "templates/browser_resource_stats.json"
   },
-
   "browser_ajax_stats": {
     "name": "AJAX",
     "description": "AJAX 호출 성능 (ContainerRUM 템플릿)",
     "mxqlPaths": [],
-    "tagCountCategories": ["rum_ajax_each_page"],
+    "tagCountCategories": [
+      "rum_ajax_each_page"
+    ],
     "source": "templates/browser_ajax_stats.json"
   },
-
   "flexboard": {
     "name": "Flex 보드",
     "description": "사용자 커스텀 대시보드",
     "mxqlPaths": [],
     "tagCountCategories": []
   },
-
   "rum_pageload_hitmap": {
     "name": "사용자 액션 히트맵",
     "description": "페이지 로드 시간 분포를 히트맵으로 시각화",
     "mxqlPaths": [],
-    "tagCountCategories": ["hitmap_rum_pageload"],
-    "source": "fsd/browser/2_pages/RUMHitmapPage/"
+    "tagCountCategories": [
+      "hitmap_rum_pageload"
+    ],
+    "source": "fsd/browser/2_pages/RUMHitmapPage/",
+    "yardApis": [
+      {
+        "type": "hitmap_rum_pageload",
+        "path": "/select",
+        "description": "페이지 로드 히트맵"
+      },
+      {
+        "type": "hitmap_rum_pageload",
+        "path": "/profiles",
+        "description": "페이지 로드 프로파일 목록"
+      }
+    ]
   },
-
   "ajax_analytics": {
     "name": "AJAX 히트맵",
     "description": "AJAX 호출 응답시간 분포 히트맵",
     "mxqlPaths": [],
     "tagCountCategories": [],
     "note": "HitmapAnalyticsTemplate01 기반",
-    "source": "fsd/browser/2_pages/AjaxAnalytics/"
+    "source": "fsd/browser/2_pages/AjaxAnalytics/",
+    "yardApis": [
+      {
+        "type": "hitmap_rum",
+        "path": "/select",
+        "description": "AJAX 히트맵"
+      },
+      {
+        "type": "hitmap_rum",
+        "path": "/profiles",
+        "description": "AJAX 프로파일 목록"
+      }
+    ]
   },
-
   "browser_error_tracking": {
     "name": "에러 추적",
     "description": "브라우저 에러 추적 및 이력",
@@ -75,7 +126,6 @@
     "tagCountCategories": [],
     "note": "LogExplorer 기반, 로그 카테고리 사용 (#BrowserError)"
   },
-
   "user_session_event_search": {
     "name": "사용자 세션 로그 검색",
     "description": "사용자 세션별 이벤트 검색",
@@ -83,46 +133,52 @@
     "tagCountCategories": [],
     "note": "LogMonitoring 기반, 로그 카테고리 사용 (#PerformanceEvent, #UserEvent, #Network 등)"
   },
-
   "counter": {
     "name": "메트릭스 차트",
     "description": "사용자 정의 메트릭 차트",
     "mxqlPaths": [],
     "tagCountCategories": []
   },
-
   "page_load_statistics": {
     "name": "페이지 로드 통계",
     "description": "페이지 그룹/브라우저/OS/디바이스/IP별 로드 통계",
     "mxqlPaths": [],
-    "tagCountCategories": ["db3_stat_gen_rum_page_load_group_stats", "db3_stat_gen_rum_page_load_browser_stats", "db3_stat_gen_rum_page_load_os_stats", "db3_stat_gen_rum_page_load_device_stats", "db3_stat_gen_rum_page_load_ip_stats"],
+    "tagCountCategories": [
+      "db3_stat_gen_rum_page_load_group_stats",
+      "db3_stat_gen_rum_page_load_browser_stats",
+      "db3_stat_gen_rum_page_load_os_stats",
+      "db3_stat_gen_rum_page_load_device_stats",
+      "db3_stat_gen_rum_page_load_ip_stats"
+    ],
     "source": "fsd/browser/5_entities/page-load/mql/categories.ts"
   },
-
   "ip_statistics": {
     "name": "IP 통계",
     "description": "IP별 접속 통계",
     "mxqlPaths": [],
-    "tagCountCategories": ["db3_stat_gen_rum_page_load_ip_stats"],
+    "tagCountCategories": [
+      "db3_stat_gen_rum_page_load_ip_stats"
+    ],
     "source": "fsd/browser/2_pages/IpStatisticsPage/"
   },
-
   "resource_statistics": {
     "name": "리소스 통계",
     "description": "리소스별 로딩 통계",
     "mxqlPaths": [],
-    "tagCountCategories": ["db3_stat_gen_rum_resource_stats"],
+    "tagCountCategories": [
+      "db3_stat_gen_rum_resource_stats"
+    ],
     "source": "fsd/browser/5_entities/resource/mql/categories.ts"
   },
-
   "error_statistics": {
     "name": "브라우저 에러 통계",
     "description": "브라우저 에러 유형별 통계",
     "mxqlPaths": [],
-    "tagCountCategories": ["db3_stat_gen_rum_error_stats"],
+    "tagCountCategories": [
+      "db3_stat_gen_rum_error_stats"
+    ],
     "source": "fsd/browser/5_entities/browser-error/mql/categories.ts"
   },
-
   "flexible_report": {
     "name": "보고서",
     "description": "일간/주간/월간 성능 보고서",

@@ -3,15 +3,20 @@
   "$description": "APM 화면 카탈로그 — 프론트 소스 체계적 검증 완료",
   "$urlPrefix": "/apm/",
   "$maintainer": "TODO: APM 담당자",
-
   "dashboard": {
     "name": "애플리케이션 대시보드",
     "description": "TPS, 응답시간, 액티브TX, APDEX, 시스템 CPU, 힙 메모리 위젯 기반 대시보드",
     "mxqlPaths": [],
-    "tagCountCategories": ["app_counter", "app_counter{m5}", "app_proc_counter", "app_host_resource", "app_active_stat", "search_act_tx_run_sql"],
+    "tagCountCategories": [
+      "app_counter",
+      "app_counter{m5}",
+      "app_proc_counter",
+      "app_host_resource",
+      "app_active_stat",
+      "search_act_tx_run_sql"
+    ],
     "source": "fsd/application/2_pages/APMDashboardPreset/ + service/PresetDashboard/Widget/Widgets/AA/"
   },
-
   "transaction_map": {
     "name": "트랜잭션 맵",
     "description": "분산 트랜잭션의 호출 관계를 시각화. 응답시간, SQL 시간, fetch 수 등 트랜잭션 상세 데이터.",
@@ -22,8 +27,32 @@
         "type": "txmap",
         "path": "/realtime",
         "description": "실시간 트랜잭션 데이터",
-        "params": { "index": 0, "loop": 0, "filters": [] },
-        "fields": ["txid", "elapsed", "sqlTime", "sqlCount", "fetchTime", "fetchCount", "cpu", "mem", "service", "ip", "domain"]
+        "fields": [
+          "txid",
+          "elapsed",
+          "sqlTime",
+          "sqlCount",
+          "fetchTime",
+          "fetchCount",
+          "cpu",
+          "mem",
+          "service",
+          "ip",
+          "domain"
+        ]
+      },
+      {
+        "type": "txmap/v2",
+        "path": "/read",
+        "description": "디스크 트랜잭션 조회 (시간범위)",
+        "fields": [
+          "txid",
+          "elapsed",
+          "sqlTime",
+          "sqlCount",
+          "cpu",
+          "mem"
+        ]
       }
     ],
     "domainKnowledge": [
@@ -32,54 +61,93 @@
       "fetchTime: fetch 시간(ms), fetchCount: fetch 수, cpu: CPU 사용(ms), mem: 메모리(bytes)"
     ]
   },
-
   "multi_active_tx": {
     "name": "액티브 트랜잭션",
     "description": "여러 인스턴스의 액티브 트랜잭션을 동시에 모니터링",
     "mxqlPaths": [],
     "tagCountCategories": [],
-    "note": "독립 Multi TX API 사용"
+    "note": "독립 Multi TX API 사용",
+    "yardApis": [
+      {
+        "type": "/active_tx",
+        "path": "/v2list",
+        "description": "액티브 트랜잭션 목록"
+      }
+    ]
   },
-
   "flexboard": {
     "name": "Flex 보드",
     "description": "사용자 커스텀 대시보드",
     "mxqlPaths": [],
     "tagCountCategories": []
   },
-
   "agent_resource_dashboard": {
     "name": "Agent별 리소스 대시보드",
     "description": "에이전트별 CPU, 힙, GC, 파일디스크립터, 자바 메모리 상세",
     "mxqlPaths": [],
-    "tagCountCategories": ["app_proc_counter", "app_host_resource", "javax_memory"],
+    "tagCountCategories": [
+      "app_proc_counter",
+      "app_host_resource",
+      "javax_memory"
+    ],
     "source": "fsd/application/2_pages/AgentResourceDashboardPage/AgentResourceDashboardPage.meta.ts"
   },
-
   "dashboard/context": {
     "name": "비즈니스 대시보드",
     "description": "업무(Context)별 Health, 액티브TX, TPS, 트랜잭션 수, 응답시간, 에러율",
     "mxqlPaths": [],
     "tagCountCategories": [],
-    "note": "독립 Dashboard API 사용"
+    "note": "독립 Dashboard API 사용",
+    "yardApis": [
+      {
+        "type": "/bizdata",
+        "path": "/realtime",
+        "description": "실시간 비즈니스 데이터"
+      },
+      {
+        "type": "/bizdata",
+        "path": "/history",
+        "description": "비즈니스 이력 데이터"
+      }
+    ]
   },
-
   "daily_app_stat": {
     "name": "일자별 애플리케이션 현황",
     "description": "일간 성능 통계 요약",
     "mxqlPaths": [],
     "tagCountCategories": [],
-    "note": "독립 DailyAppStat API 사용"
+    "note": "독립 DailyAppStat API 사용",
+    "yardApis": [
+      {
+        "type": "/daily_app_stat",
+        "path": "h24_tx",
+        "description": "24시간 트랜잭션 통계"
+      },
+      {
+        "type": "/daily_app_stat",
+        "path": "h24_user",
+        "description": "24시간 사용자 통계"
+      },
+      {
+        "type": "/daily_app_stat",
+        "path": "5m288_tps",
+        "description": "5분 단위 TPS"
+      }
+    ]
   },
-
   "trending": {
     "name": "성능 추이",
     "description": "TPS, 응답시간, CPU, 힙 메모리, 액티브TX, 동시접속자, 방문자 추이",
     "mxqlPaths": [],
-    "tagCountCategories": ["app_counter", "app_user", "app_host_resource", "app_proc_counter", "visitor"],
+    "tagCountCategories": [
+      "app_counter",
+      "app_user",
+      "app_host_resource",
+      "app_proc_counter",
+      "visitor"
+    ],
     "source": "fsd/application/2_pages/APMTrendingPage/APMTrendingPage.tsx"
   },
-
   "metrics_chart": {
     "name": "메트릭스 차트",
     "description": "사용자 정의 메트릭 차트",
@@ -87,7 +155,6 @@
     "tagCountCategories": [],
     "note": "범용 Metric API 사용, 고정 카테고리 없음"
   },
-
   "tag_count": {
     "name": "메트릭스 조회",
     "description": "태그카운트 데이터 직접 조회",
@@ -95,7 +162,6 @@
     "tagCountCategories": [],
     "note": "범용 TagCount API, 고정 카테고리 없음"
   },
-
   "stack": {
     "name": "스택",
     "description": "애플리케이션 쓰레드 스택 분석",
@@ -103,23 +169,44 @@
     "tagCountCategories": [],
     "note": "독립 Stack API 사용"
   },
-
   "cube2": {
     "name": "큐브",
     "description": "다차원 성능 분석",
     "mxqlPaths": [],
     "tagCountCategories": [],
-    "note": "독립 Cube API 사용"
+    "note": "독립 Cube API 사용",
+    "yardApis": [
+      {
+        "type": "/cube",
+        "path": "/history/series",
+        "description": "큐브 시계열 데이터"
+      }
+    ]
   },
-
   "daily_hitmap": {
     "name": "히트맵",
     "description": "트랜잭션 응답시간 분포를 시간축으로 시각화",
     "mxqlPaths": [],
     "tagCountCategories": [],
-    "note": "독립 Hitmap API 사용"
+    "note": "독립 Hitmap API 사용",
+    "yardApis": [
+      {
+        "type": "/hitmap",
+        "path": "/custom",
+        "description": "히트맵 데이터"
+      },
+      {
+        "type": "/hitmap",
+        "path": "/series",
+        "description": "히트맵 시계열"
+      },
+      {
+        "type": "/hitmap",
+        "path": "/select",
+        "description": "히트맵 선택 조회"
+      }
+    ]
   },
-
   "transaction/trace": {
     "name": "멀티 트랜잭션 추적",
     "description": "분산 트랜잭션 추적",
@@ -127,7 +214,6 @@
     "tagCountCategories": [],
     "note": "독립 Trace API 사용"
   },
-
   "new/tx_profile": {
     "name": "트랜잭션 검색",
     "description": "트랜잭션 프로파일 검색",
@@ -135,7 +221,6 @@
     "tagCountCategories": [],
     "note": "독립 Profile API 사용"
   },
-
   "topology/application": {
     "name": "애플리케이션 토폴로지",
     "description": "애플리케이션 간 호출 관계 토폴로지 맵",
@@ -143,7 +228,6 @@
     "tagCountCategories": [],
     "note": "독립 Topology API 사용"
   },
-
   "msa": {
     "name": "MSA 분석",
     "description": "마이크로서비스 아키텍처 호출 관계 분석",
@@ -151,103 +235,198 @@
     "tagCountCategories": [],
     "note": "독립 MSA API 사용"
   },
-
   "stat_service": {
     "name": "트랜잭션 통계",
     "description": "서비스(URL)별 호출 건수, 응답시간, 에러율",
     "mxqlPaths": [],
-    "tagCountCategories": ["service"],
-    "source": "fsd/application/2_pages/APMServiceStatPage/APMServiceStat.utils.ts"
+    "tagCountCategories": [
+      "service"
+    ],
+    "source": "fsd/application/2_pages/APMServiceStatPage/APMServiceStat.utils.ts",
+    "yardApis": [
+      {
+        "type": "/stat",
+        "path": "/ap",
+        "description": "서비스 통계"
+      }
+    ]
   },
-
   "stat_domain": {
     "name": "도메인 통계",
     "description": "도메인별 통계",
     "mxqlPaths": [],
-    "tagCountCategories": ["tx_domain"],
-    "source": "fsd/application/2_pages/APMDomainStatPage/APMDomainStat.utils.ts"
+    "tagCountCategories": [
+      "tx_domain"
+    ],
+    "source": "fsd/application/2_pages/APMDomainStatPage/APMDomainStat.utils.ts",
+    "yardApis": [
+      {
+        "type": "/stat",
+        "path": "/ap",
+        "description": "도메인 통계"
+      }
+    ]
   },
-
   "stat_caller": {
     "name": "Caller 통계",
     "description": "호출자별 통계",
     "mxqlPaths": [],
-    "tagCountCategories": ["tx_caller"],
-    "source": "fsd/application/2_pages/APMCallerStatPage/APMCallerStat.utils.ts"
+    "tagCountCategories": [
+      "tx_caller"
+    ],
+    "source": "fsd/application/2_pages/APMCallerStatPage/APMCallerStat.utils.ts",
+    "yardApis": [
+      {
+        "type": "/stat",
+        "path": "/ap",
+        "description": "Caller 통계"
+      }
+    ]
   },
-
   "stat_login": {
     "name": "로그인 통계",
     "description": "로그인별 통계",
     "mxqlPaths": [],
-    "tagCountCategories": ["tx_login"],
-    "source": "fsd/application/2_pages/APMLoginStatPage/APMLoginStat.utils.ts"
+    "tagCountCategories": [
+      "tx_login"
+    ],
+    "source": "fsd/application/2_pages/APMLoginStatPage/APMLoginStat.utils.ts",
+    "yardApis": [
+      {
+        "type": "/stat",
+        "path": "/ap",
+        "description": "로그인 통계"
+      }
+    ]
   },
-
   "stat_ip": {
     "name": "IP 트랜잭션 통계",
     "description": "IP별 트랜잭션 통계",
     "mxqlPaths": [],
-    "tagCountCategories": ["ip_url"],
-    "source": "fsd/application/2_pages/APMIpStatPage/APMIpStat.utils.ts"
+    "tagCountCategories": [
+      "ip_url"
+    ],
+    "source": "fsd/application/2_pages/APMIpStatPage/APMIpStat.utils.ts",
+    "yardApis": [
+      {
+        "type": "/stat",
+        "path": "/ap",
+        "description": "IP 통계"
+      }
+    ]
   },
-
   "stat_referer": {
     "name": "리퍼러 통계",
     "description": "리퍼러별 통계",
     "mxqlPaths": [],
-    "tagCountCategories": ["tx_referer"],
-    "source": "fsd/application/2_pages/APMRefererStatPage/APMRefererStat.utils.ts"
+    "tagCountCategories": [
+      "tx_referer"
+    ],
+    "source": "fsd/application/2_pages/APMRefererStatPage/APMRefererStat.utils.ts",
+    "yardApis": [
+      {
+        "type": "/stat",
+        "path": "/ap",
+        "description": "리퍼러 통계"
+      }
+    ]
   },
-
   "stat_error": {
     "name": "에러 통계",
     "description": "에러 유형별 발생 건수",
     "mxqlPaths": [],
-    "tagCountCategories": ["error"],
-    "source": "fsd/application/2_pages/APMErrorStatPage/APMErrorStat.utils.ts"
+    "tagCountCategories": [
+      "error"
+    ],
+    "source": "fsd/application/2_pages/APMErrorStatPage/APMErrorStat.utils.ts",
+    "yardApis": [
+      {
+        "type": "/stat",
+        "path": "/ap",
+        "description": "에러 통계"
+      }
+    ]
   },
-
   "stat_sql": {
     "name": "SQL 통계",
     "description": "SQL별 호출 건수, 수행시간",
     "mxqlPaths": [],
-    "tagCountCategories": ["sql"],
-    "source": "fsd/application/2_pages/APMSqlStatPage/APMSqlStat.utils.ts"
+    "tagCountCategories": [
+      "sql"
+    ],
+    "source": "fsd/application/2_pages/APMSqlStatPage/APMSqlStat.utils.ts",
+    "yardApis": [
+      {
+        "type": "/stat",
+        "path": "/ap",
+        "description": "SQL 통계"
+      }
+    ]
   },
-
   "stat_httpc": {
     "name": "HTTP 호출 통계",
     "description": "외부 HTTP 호출별 건수, 응답시간",
     "mxqlPaths": [],
-    "tagCountCategories": ["httpc"],
-    "source": "fsd/application/2_pages/APMHttpcStatPage/APMHttpcStat.utils.ts"
+    "tagCountCategories": [
+      "httpc"
+    ],
+    "source": "fsd/application/2_pages/APMHttpcStatPage/APMHttpcStat.utils.ts",
+    "yardApis": [
+      {
+        "type": "/stat",
+        "path": "/ap",
+        "description": "HTTP Call 통계"
+      }
+    ]
   },
-
   "stat_remote": {
     "name": "클라이언트 IP 통계",
     "description": "클라이언트 IP별 통계",
     "mxqlPaths": [],
-    "tagCountCategories": ["remote"],
-    "source": "fsd/application/2_pages/APMRemoteStatPage/APMRemoteStat.utils.ts"
+    "tagCountCategories": [
+      "remote"
+    ],
+    "source": "fsd/application/2_pages/APMRemoteStatPage/APMRemoteStat.utils.ts",
+    "yardApis": [
+      {
+        "type": "/stat",
+        "path": "/ap",
+        "description": "클라이언트 IP 통계"
+      }
+    ]
   },
-
   "stat_useragent_detail": {
     "name": "유저 에이전트 통계",
     "description": "User Agent별 상세 통계",
     "mxqlPaths": [],
-    "tagCountCategories": ["useragent"],
-    "source": "fsd/application/2_pages/APMUserAgentDetailStatPage/APMUserAgentDetailStat.utils.ts"
+    "tagCountCategories": [
+      "useragent"
+    ],
+    "source": "fsd/application/2_pages/APMUserAgentDetailStatPage/APMUserAgentDetailStat.utils.ts",
+    "yardApis": [
+      {
+        "type": "/stat",
+        "path": "/ap",
+        "description": "User Agent 통계"
+      }
+    ]
   },
-
   "stat_useragent": {
     "name": "클라이언트 브라우저 통계",
     "description": "클라이언트 브라우저별 통계",
     "mxqlPaths": [],
-    "tagCountCategories": ["useragent"],
-    "source": "fsd/application/2_pages/APMUserAgentStatPage/APMUserAgentStat.utils.ts"
+    "tagCountCategories": [
+      "useragent"
+    ],
+    "source": "fsd/application/2_pages/APMUserAgentStatPage/APMUserAgentStat.utils.ts",
+    "yardApis": [
+      {
+        "type": "/stat",
+        "path": "/ap",
+        "description": "브라우저 통계"
+      }
+    ]
   },
-
   "flexible_report": {
     "name": "보고서",
     "description": "일간/주간/월간 성능 보고서",
