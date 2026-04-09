@@ -59,8 +59,10 @@
     "name": "슬로우 쿼리",
     "description": "느린 쿼리 목록과 분석",
     "mxqlPaths": [],
-    "tagCountCategories": [],
-    "note": "독립 SlowQuery API 사용"
+    "tagCountCategories": [
+      "db_{platform}_slowquery"
+    ],
+    "note": "MXQL text 모드 사용 (getDbSlowQueryMql)"
   },
   "flexboard": {
     "name": "Flex 보드",
@@ -145,7 +147,14 @@
     "description": "테이블/인덱스별 사이즈, 스캔 횟수, 데드 튜플 등",
     "mxqlPaths": [],
     "tagCountCategories": [],
-    "note": "독립 Object Info API 사용"
+    "yardApis": [
+      {
+        "type": "dbx",
+        "path": "/oid/{oid}/table_info",
+        "description": "테이블/인덱스 정보",
+        "note": "/yard/api (flush 아님)"
+      }
+    ]
   },
   "top_sql": {
     "name": "Top SQL",
@@ -219,7 +228,14 @@
     "description": "DB 설정 파라미터 조회",
     "mxqlPaths": [],
     "tagCountCategories": [],
-    "note": "독립 Parameter API 사용"
+    "yardApis": [
+      {
+        "type": "dbx",
+        "path": "/oid/{oid}/params_history",
+        "description": "DB 파라미터 이력",
+        "note": "/yard/api (flush 아님)"
+      }
+    ]
   },
   "metrics_chart": {
     "name": "메트릭스 차트",
@@ -238,7 +254,7 @@
     "description": "DB 사이즈 증가 추이",
     "mxqlPaths": [],
     "tagCountCategories": [],
-    "note": "독립 Size API 사용"
+    "note": "MXQL text 모드 사용"
   },
   "dead_lock": {
     "name": "데드락",
@@ -247,7 +263,15 @@
     "tagCountCategories": [
       "db_{platform}_deadlock"
     ],
-    "source": "containers/DBx/DBxDeadLock/"
+    "source": "containers/DBx/DBxDeadLock/",
+    "yardApis": [
+      {
+        "type": "dbx",
+        "path": "/oid/{oid}/dead_lock",
+        "description": "데드락 이력",
+        "note": "/yard/api (flush 아님)"
+      }
+    ]
   },
   "flexible_report": {
     "name": "보고서",

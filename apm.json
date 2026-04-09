@@ -167,7 +167,13 @@
     "description": "애플리케이션 쓰레드 스택 분석",
     "mxqlPaths": [],
     "tagCountCategories": [],
-    "note": "독립 Stack API 사용"
+    "yardApis": [
+      {
+        "type": "/stat",
+        "path": "/ap",
+        "description": "스택 통계"
+      }
+    ]
   },
   "cube2": {
     "name": "큐브",
@@ -212,28 +218,56 @@
     "description": "분산 트랜잭션 추적",
     "mxqlPaths": [],
     "tagCountCategories": [],
-    "note": "독립 Trace API 사용"
+    "yardApis": [
+      {
+        "type": "/profile",
+        "path": "/v2/mtlist",
+        "description": "멀티 트랜잭션 프로파일"
+      },
+      {
+        "type": "/profile",
+        "path": "/v2/mtlist/all",
+        "description": "멀티 트랜잭션 전체"
+      }
+    ]
   },
   "new/tx_profile": {
     "name": "트랜잭션 검색",
     "description": "트랜잭션 프로파일 검색",
     "mxqlPaths": [],
     "tagCountCategories": [],
-    "note": "독립 Profile API 사용"
+    "yardApis": [
+      {
+        "type": "/profile",
+        "path": "/v2/mtlist",
+        "description": "트랜잭션 프로파일 목록"
+      }
+    ]
   },
   "topology/application": {
     "name": "애플리케이션 토폴로지",
     "description": "애플리케이션 간 호출 관계 토폴로지 맵",
     "mxqlPaths": [],
     "tagCountCategories": [],
-    "note": "독립 Topology API 사용"
+    "yardApis": [
+      {
+        "type": "/txtopo",
+        "path": "/select",
+        "description": "토폴로지 선택 조회"
+      },
+      {
+        "type": "/txtopo",
+        "path": "/tx",
+        "description": "토폴로지 트랜잭션 목록"
+      }
+    ]
   },
   "msa": {
     "name": "MSA 분석",
     "description": "마이크로서비스 아키텍처 호출 관계 분석",
     "mxqlPaths": [],
     "tagCountCategories": [],
-    "note": "독립 MSA API 사용"
+    "note": "Yard API type/path 미확인 — 프론트 코드에서 직접 API 호출 패턴 못 찾음"
   },
   "stat_service": {
     "name": "트랜잭션 통계",
