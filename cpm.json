@@ -1,0 +1,554 @@
+{
+  "$product": "kubernetes",
+  "$description": "쿠버네티스 모니터링 화면 카탈로그 — KubernetesRouter.tsx 라우트 기반",
+  "$urlPrefix": "/cpm/",
+  "$maintainer": "김재영",
+  "containerMap": {
+    "name": "컨테이너 맵",
+    "description": "Pod/Container 뷰를 선택하여 육각형 맵으로 표시. GPU 지표 JOIN 포함.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_pod",
+      "container",
+      "container_foreign_project_mapping",
+      "app_counter"
+    ],
+    "promqlMetrics": [
+      "DCGM_FI_DEV_GPU_UTIL",
+      "DCGM_FI_DEV_FB_USED",
+      "DCGM_FI_DEV_GPU_TEMP",
+      "DCGM_FI_DEV_POWER_USAGE",
+      "DCGM_FI_PROF_GR_ENGINE_ACTIVE",
+      "DCGM_FI_PROF_SM_ACTIVE",
+      "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE"
+    ],
+    "domainKnowledge": [
+      "MXQL Text 직접 사용 (CATEGORY kube_pod/container + TAGLOAD)",
+      "Pod 뷰: kube_display_status로 상태 분류 (Running/Waiting/Dead 등)",
+      "Container 뷰: kube_con_state/kube_con_state_reason으로 상태 분류",
+      "GPU: MIG 모드(DCGM_FI_DEV_MIG_MODE==1)이면 GR_ENGINE_ACTIVE, 아니면 GPU_UTIL",
+      "외래 프로젝트: container_foreign_project_mapping으로 APM 프로젝트 연결",
+      "MIG 개별/Pod 매핑은 이 화면에서 직접 볼 수 없음 — 챗봇이 MCP로 조회해야 함"
+    ],
+    "analysisGuides": [
+      {
+        "trigger": "상태|현황|요약|설명",
+        "instruction": "1단계: kube_pod 조회 → Running/Waiting/Dead Pod 수 확인\n2단계: container 조회 → CPU/메모리 Top 5 컨테이너\n3단계: 이상 징후 (Dead/Waiting Pod, 높은 RestartCount) 강조"
+      },
+      {
+        "trigger": "문제|에러|Dead|Waiting|재시작|CrashLoop",
+        "instruction": "1단계: kube_pod 조회 → phase가 Waiting/Dead인 Pod 필터\n2단계: kube_event 조회 → Warning 이벤트 확인 (reason, message)\n3단계: 답변: [문제 Pod 목록 + reason] → [이벤트 기반 원인] → [해결 방안]"
+      },
+      {
+        "trigger": "GPU|gpu|파드.*GPU|어떤.*쓰",
+        "instruction": "DCGM_FI_PROF_GR_ENGINE_ACTIVE PromQL 조회 → MIG별 Pod 매핑 표 작성"
+      }
+    ]
+  },
+  "node/map": {
+    "name": "노드 맵",
+    "description": "노드 상태, IP, OS 정보를 시각적으로 표시",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_node",
+      "server_base"
+    ],
+    "domainKnowledge": [
+      "노드별 CPU/메모리 사용률, Ready 상태를 시각적으로 표시",
+      "server_base: cpu, memory_pused 등 시스템 레벨 메트릭"
+    ]
+  },
+  "serviceDashboard": {
+    "name": "애플리케이션 서비스 대시보드",
+    "description": "K8s 위에서 동작하는 애플리케이션 서비스 성능",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "app_counter",
+      "kube_pod"
+    ],
+    "domainKnowledge": [
+      "APM 연동된 컨테이너의 TPS, 응답시간, 에러율 등을 표시",
+      "app_counter: tps, resp_time, error_count, active_tx_count"
+    ]
+  },
+  "container/performace": {
+    "name": "퍼포먼스 요약",
+    "description": "컨테이너/Pod/노드 리소스 성능 요약. Pending Pod/Container 포함.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_pod",
+      "kube_node",
+      "kube_pending_pod",
+      "kube_pending_container",
+      "container",
+      "app_counter"
+    ],
+    "domainKnowledge": [
+      "컨테이너, Pod, 노드 3개 레벨의 리소스를 한 화면에서 요약",
+      "Flex 보드 기반 템플릿 화면"
+    ]
+  },
+  "flexboard": {
+    "name": "Flex 보드",
+    "description": "사용자가 자유롭게 구성하는 커스텀 대시보드. 모든 카테고리/메트릭 사용 가능.",
+    "mxqlPaths": [],
+    "tagCountCategories": []
+  },
+  "multiContainerMap": {
+    "name": "통합 컨테이너 맵",
+    "description": "클러스터 전체의 컨테이너를 통합적으로 시각화",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_pod",
+      "container",
+      "kube_node"
+    ]
+  },
+  "cluster/overview": {
+    "name": "클러스터 요약",
+    "description": "K8s 오브젝트 수, Pod/컨테이너 상태, 노드 정보, 이벤트 Top5",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_stat",
+      "kube_entities",
+      "container",
+      "kube_node",
+      "kube_cluster",
+      "kube_event"
+    ],
+    "domainKnowledge": [
+      "kube_entities: Deployment/StatefulSet/DaemonSet/Pod/Container 등 오브젝트 수",
+      "kube_stat: 전체 Pod 상태별 수 (running/waiting/terminated)",
+      "kube_event: Warning/Normal 이벤트 Top 5",
+      "kube_cluster: 클러스터 버전 정보"
+    ],
+    "analysisGuides": [
+      {
+        "trigger": "상태|현황|요약",
+        "instruction": "1단계: kube_entities → 오브젝트 수 요약\n2단계: kube_stat → Pod/컨테이너 상태별 수\n3단계: kube_event → Warning 이벤트 Top 5\n전체 클러스터 건강 상태를 종합 판단"
+      }
+    ]
+  },
+  "namespace/status": {
+    "name": "네임스페이스 현황",
+    "description": "네임스페이스별 프로젝트 통계",
+    "mxqlPaths": [],
+    "tagCountCategories": []
+  },
+  "node/list": {
+    "name": "노드 목록",
+    "description": "노드별 CPU, 메모리, Pod 수, DiskPressure/MemoryPressure 상태",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_node",
+      "container",
+      "kube_process",
+      "server_base",
+      "server_disk"
+    ],
+    "domainKnowledge": [
+      "kube_node 주요 필드: status, onodeName, capacityCpu, capacityMemory, allocatable_pods, pods",
+      "Pressure 조건: DiskPressure, MemoryPressure, PIDPressure — True이면 노드에 문제",
+      "server_base: cpu_idle, cpu_iowait, memory_pused 등 시스템 레벨 메트릭"
+    ],
+    "analysisGuides": [
+      {
+        "trigger": "리소스|용량|부족|Pressure|문제",
+        "instruction": "1단계: kube_node 조회 → DiskPressure/MemoryPressure/PIDPressure가 True인 노드 확인\n2단계: server_base 조회 → CPU, 메모리 사용률 높은 노드\n3단계: 노드별 Pod 수 대비 allocatable_pods 비교"
+      }
+    ]
+  },
+  "node/timeline": {
+    "name": "노드 타임라인",
+    "description": "노드별 상태 변화를 시간축으로 시각화",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_node"
+    ]
+  },
+  "node_detail": {
+    "name": "노드 상세",
+    "description": "특정 노드의 capacity, 실행 중인 Pod, 리소스 상세",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_node"
+    ]
+  },
+  "node/disk/list": {
+    "name": "노드 디스크 목록",
+    "description": "노드별 디스크 사용량, 마운트 정보",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "server_disk"
+    ],
+    "domainKnowledge": [
+      "server_disk: fileSystem, mountPoint, usedSpace, usedPercent, totalSpace"
+    ]
+  },
+  "gpu/dashboard": {
+    "name": "GPU 대시보드",
+    "description": "GPU 활용현황(Total/Allocated/Active/Effective) + GPU Map(물리+MIG Active/Idle)",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_pod",
+      "container"
+    ],
+    "promqlMetrics": [
+      "DCGM_FI_DEV_WEIGHTED_GPU_UTIL",
+      "DCGM_GPU_PROCESS_UTIL",
+      "DCGM_FI_DEV_GPU_UTIL",
+      "DCGM_FI_PROF_GR_ENGINE_ACTIVE"
+    ],
+    "domainKnowledge": [
+      "GPU 활용현황: Total → Allocated → Active → Effective 단계별 필터링",
+      "GPU Map: 파란색=Active(5분 평균 ≥1%), 회색=Idle. UUID가 MIG-로 시작하면 MIG 인스턴스",
+      "DCGM_FI_DEV_WEIGHTED_GPU_UTIL: 물리 GPU 전체 사용률",
+      "DCGM_FI_PROF_GR_ENGINE_ACTIVE: MIG 프로필별 사용률. 라벨에 Pod 매핑 정보 포함",
+      "MIG 개별/Pod 매핑은 이 화면에서 직접 볼 수 없음 — 챗봇이 MCP로 조회해야 함"
+    ],
+    "analysisGuides": [
+      {
+        "trigger": "최적화|비용|절감|낭비|효율|추천",
+        "instruction": "1단계: DCGM_FI_DEV_WEIGHTED_GPU_UTIL PromQL 조회\n2단계: GPU별 분류 — Idle(0%), 저활용(40%이하), 버스트, 고활용(50%이상)\n3단계: [현황][Idle 회수 ₩150,000/일][스팟 전환 70% 절감][MIG 통합][총 절감액]\nGPU 이름과 수치 필수. 추상적 조언 금지."
+      },
+      {
+        "trigger": "상태|현황|요약",
+        "instruction": "DCGM_FI_DEV_WEIGHTED_GPU_UTIL + GR_ENGINE_ACTIVE 조회 → 전체 GPU 수, Active/Idle, GPU별 사용률 표"
+      },
+      {
+        "trigger": "파드|pod|매핑|누가.*사용|어떤.*쓰",
+        "instruction": "DCGM_FI_PROF_GR_ENGINE_ACTIVE PromQL → MIG별 Pod 매핑 표"
+      }
+    ]
+  },
+  "gpu/trend": {
+    "name": "GPU 트렌드",
+    "description": "물리 GPU별 사용률 추이. MIG 개별/Pod 매핑은 볼 수 없음.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_pod"
+    ],
+    "promqlMetrics": [
+      "DCGM_FI_DEV_WEIGHTED_GPU_UTIL",
+      "DCGM_FI_PROF_GR_ENGINE_ACTIVE"
+    ],
+    "domainKnowledge": [
+      "물리 GPU별 사용률(WEIGHTED_GPU_UTIL) 추이만 표시",
+      "볼 수 없는 것: MIG 개별 활용률, Pod-GPU 매핑, POWER/TEMP/MEMORY",
+      "사용자가 MIG/Pod 물어보면 → GR_ENGINE_ACTIVE PromQL로 조회"
+    ],
+    "analysisGuides": [
+      {
+        "trigger": "최적화|비용|절감|낭비|효율|개선|추천",
+        "instruction": "사용자가 최적화/비용 절감을 물어보면 반드시 다음 단계를 수행:\n1단계 - 데이터 수집: DCGM_FI_DEV_WEIGHTED_GPU_UTIL을 PromQL로 조회하여 GPU별 사용률 추이 확보 (최근 24시간 또는 조회 기간)\n2단계 - GPU별 사용 패턴 분류:\n  - Idle GPU: 조회 기간 중 0% 사용률인 시간대가 전체의 50% 이상\n  - 저활용 GPU: 평균 사용률 40% 이하\n  - 버스트 GPU: 간헐적 고사용(80%+) 후 장시간 유휴 패턴\n  - 고활용 GPU: 평균 50% 이상 지속\n3단계 - 구체적 분석 결과를 다음 섹션 형식으로 답변:\n  [섹션1] 전체 클러스터 현황 요약 — 평균 사용률, Idle/저활용/버스트/고활용 GPU 수와 목록 (GPU이름, 유휴일수)\n  [섹션2] Idle GPU 감지 및 회수 추천 — GPU별 유휴 기간, 비용 계산 (GPU 1대 하루 비용 ≈ ₩150,000 기준), 월 낭비 비용 합계\n  [섹션3] 버스트 패턴 감지 및 스팟 전환 추천 — 간헐적 사용 GPU의 스팟 인스턴스 전환 시 약 70% 비용 절감\n  [섹션4] GPU 통합(Consolidation) 기회 — 저활용 GPU를 MIG 파티셔닝으로 통합 가능 여부와 예상 절감액\n  [섹션5] 총 비용 절감 기회 요약 — 각 섹션별 절감액 합산\n반드시 실제 조회 데이터의 GPU 이름(nvidia0, nvidia1 등)과 수치를 명시할 것. 추상적 조언 금지."
+      },
+      {
+        "trigger": "상태|현황|요약|설명|화면",
+        "instruction": "사용자가 현황/상태/화면 설명을 물어보면:\n1단계: DCGM_FI_DEV_WEIGHTED_GPU_UTIL 조회로 각 GPU별 현재 사용률 확보\n2단계: 다음 형식으로 답변:\n  - 이 화면은 GPU 트렌드 화면으로, 물리 GPU별 사용률 추이를 시간대별로 보여줌\n  - 전체 GPU 수, 현재 Active/Idle 비율\n  - GPU별 현재 사용률 목록 (높은 순, GPU 이름과 % 포함)\n  - 주요 패턴 감지: 어떤 GPU가 지속 고사용, 어떤 GPU가 지속 유휴인지\n  - 참고: 이 화면에서는 MIG 인스턴스 개별 활용률이나 Pod-GPU 매핑은 확인 불가. 필요하면 물어보세요."
+      },
+      {
+        "trigger": "파드|pod|매핑|누가.*사용|어떤.*쓰",
+        "instruction": "사용자가 GPU-Pod 매핑을 물어보면:\n1단계: \"이 화면(GPU 트렌드)에서는 Pod-GPU 매핑을 직접 확인할 수 없습니다\" 안내\n2단계: DCGM_FI_PROF_GR_ENGINE_ACTIVE를 PromQL로 조회 — 라벨에 pod, namespace, container 정보 포함\n3단계: 각 MIG 인스턴스(또는 GPU)별로 매핑된 Pod 이름, 네임스페이스, 사용률을 표로 정리"
+      },
+      {
+        "trigger": "MIG|mig|인스턴스|개별",
+        "instruction": "사용자가 MIG 인스턴스 정보를 물어보면:\n1단계: \"이 화면은 물리 GPU 단위 사용률만 보여줍니다. MIG 인스턴스별 활용률을 조회해드리겠습니다\" 안내\n2단계: DCGM_FI_PROF_GR_ENGINE_ACTIVE를 PromQL로 조회\n3단계: MIG 인스턴스별 UUID, 사용률(%), 매핑된 Pod를 표로 정리\n4단계: 물리 GPU의 WEIGHTED_GPU_UTIL과 MIG 인스턴스별 GR_ENGINE_ACTIVE의 관계 설명"
+      }
+    ],
+    "mxqlQueries": [
+      {
+        "description": "GPU 트렌드 히트맵 데이터 조회 (가중치 GPU 사용률)",
+        "template": "kv.load {table: stat_gpu_trend_hitmap-$epoch}\nFILTER {key: t, over: $stime}\nFILTER {key: t, under: $etime}\nSELECT [t, UUID, value, max_value, min_value]\nUNFOLD [UUID, value, max_value, min_value]\nRENAME {src:value, dst:avg_value}\nJOIN {query: label_info, pk: UUID, type: inner}\nSUB label_info\n>> match DCGM_FI_DEV_WEIGHTED_GPU_UTIL\nLAST-ONLY [UUID]\nEND",
+        "note": "kv.load로 hitmap 테이블 조회. whatap_query_data(query=\"kv.load {table: stat_gpu_trend_hitmap-...}\")로 실행 가능."
+      }
+    ]
+  },
+  "container/list": {
+    "name": "컨테이너 목록",
+    "description": "컨테이너별 CPU, 메모리, 네트워크, 블록I/O",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "container"
+    ],
+    "domainKnowledge": [
+      "container 카테고리: ContainerName, CpuTotUsage(millicore), MemWs(bytes), State",
+      "kube_pod와 차이: kube_pod는 Pod 합산, container는 컨테이너 개별 메트릭"
+    ]
+  },
+  "container/timeline": {
+    "name": "컨테이너 타임라인",
+    "description": "컨테이너별 상태 변화를 시간축으로 시각화",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "container"
+    ]
+  },
+  "container/images": {
+    "name": "컨테이너 이미지 목록",
+    "description": "클러스터에서 사용 중인 컨테이너 이미지 목록",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "container"
+    ]
+  },
+  "workload/list": {
+    "name": "워크로드 목록",
+    "description": "Deployment/StatefulSet/DaemonSet/Job/ReplicaSet/CronJob 통합 목록",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_deployment",
+      "kube_pod",
+      "container"
+    ],
+    "domainKnowledge": [
+      "여러 워크로드 타입을 탭으로 분리하여 표시",
+      "각 워크로드의 Ready/Total 레플리카, Pod 상태 요약"
+    ]
+  },
+  "pod/list": {
+    "name": "Pod 목록",
+    "description": "Pod별 phase, CPU(millicore), 메모리, Request/Limit, 재시작 횟수",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_pod",
+      "kube_node",
+      "agent_list"
+    ],
+    "domainKnowledge": [
+      "kube_pod 주요 필드: phase, podName, namespace, cpu_total_millis, mem_working_set",
+      "리소스 필드: cpu_request, cpu_per_request, memory_limit, memory_per_limit, cpu_quota_percent",
+      "Pod 상태: Running/Pending/Succeeded/Failed/Unknown"
+    ],
+    "analysisGuides": [
+      {
+        "trigger": "재시작|CrashLoop|OOM|문제|에러",
+        "instruction": "1단계: kube_pod 조회 → RestartCount 높은 순 정렬\n2단계: phase가 Failed/Waiting인 Pod 필터\n3단계: kube_event 조회 → 해당 Pod의 Warning 이벤트\n답변: [문제 Pod 목록 + 재시작횟수] → [원인(OOMKilled/CrashLoop 등)] → [해결 방안]"
+      },
+      {
+        "trigger": "리소스|CPU|메모리|request|limit|사용량",
+        "instruction": "1단계: kube_pod 조회 → cpu_total_millis, mem_working_set 확인\n2단계: cpu_per_request(request 대비 사용률 %), memory_per_limit(limit 대비 %) 비교\n3단계: Over-provisioned(사용률 30%이하) 또는 Under-provisioned(사용률 90%이상) Pod 식별"
+      }
+    ]
+  },
+  "pod/timeline": {
+    "name": "Pod 타임라인",
+    "description": "Pod별 상태 변화를 시간축으로 시각화",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_pod"
+    ]
+  },
+  "pendingPod": {
+    "name": "Pending Pod 현황",
+    "description": "Pending Pod 목록과 스케줄링 실패 원인. NodeResourceTrouble 시나리오 자동 진단.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_pending_pod",
+      "kube_node",
+      "server_base"
+    ],
+    "domainKnowledge": [
+      "Pending 원인 분석: PodScheduled, Initialized, ContainersReady, Ready 조건 확인",
+      "NodeResourceTrouble: 노드 리소스(CPU/메모리/GPU) 부족으로 스케줄링 실패",
+      "Insufficient nvidia.com/gpu 또는 nvidia.com/mig-*: GPU 리소스 부족"
+    ],
+    "analysisGuides": [
+      {
+        "trigger": "왜|원인|이유|해결|스케줄",
+        "instruction": "1단계: kube_pod 조회 → phase=Pending인 Pod의 조건(PodScheduled 등) 확인\n2단계: kube_node 조회 → 노드별 allocatable vs 실사용 리소스 비교\n3단계: 답변: [Pending Pod 목록 + reason] → [노드 리소스 현황] → [해결 방안(노드 추가/request 조정/GPU 파티셔닝)]"
+      }
+    ]
+  },
+  "oom_container": {
+    "name": "OOM 컨테이너",
+    "description": "OOMKilled 된 컨테이너 이력 분석",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_oom_event",
+      "container"
+    ],
+    "domainKnowledge": [
+      "kube_oom_event: OOMKilled 이벤트 기록 (time, podUid, podname, containerName, containerId, namespace)",
+      "container: 해당 컨테이너의 mem_limit, mem_request, restart_count 등 상세 정보",
+      "OOMKilled: 컨테이너가 memory limit을 초과하여 강제 종료된 이벤트"
+    ]
+  },
+  "application/list": {
+    "name": "컨테이너 애플리케이션 목록",
+    "description": "컨테이너 내부에서 동작하는 애플리케이션 모니터링",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "app_counter",
+      "app_active_stat",
+      "app_proc_counter",
+      "app_user",
+      "container"
+    ]
+  },
+  "deployment/list": {
+    "name": "Deployment 목록",
+    "description": "디플로이먼트별 Ready/Total 레플리카, CPU, 메모리, 네트워크, 액티브TX",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "container",
+      "kube_pod",
+      "app_counter"
+    ],
+    "domainKnowledge": [
+      "container 카테고리에서 cpu_total_milli, mem_working_set, network_rbps/wbps 조회",
+      "app_counter에서 active_tx_count, tx_count, httpc_count, sql_count 조회",
+      "deployReadyReplicas < deployTotalReplicas이면 일부 Pod가 Ready 아님"
+    ]
+  },
+  "service/list": {
+    "name": "Service 목록",
+    "description": "서비스별 타입, ClusterIP, ExternalIP, 포트, 연결된 Pod 상태",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_service",
+      "kube_service_pod_mapping",
+      "kube_pod"
+    ],
+    "domainKnowledge": [
+      "MXQL Text 사용 — kube_service + kube_service_pod_mapping JOIN으로 서비스-Pod 매핑",
+      "serviceType: ClusterIP, NodePort, LoadBalancer, ExternalName"
+    ]
+  },
+  "ingress/list": {
+    "name": "Ingress 목록",
+    "description": "인그레스 리소스, 라우팅 규칙, 백엔드 서비스→Pod→Container 연결 상태까지 표시.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_ingress",
+      "kube_service",
+      "kube_service_pod_mapping",
+      "container",
+      "kube_pending_container",
+      "kube_pod",
+      "kube_pending_pod"
+    ],
+    "domainKnowledge": [
+      "하나의 MXQL로 7개 카테고리를 JOIN: ingress → service(포트매핑) → pod_mapping → container(상태) + pending_container + pod(phase) + pending_pod",
+      "Running/Waiting/Terminated 컨테이너 수와 Pod phase별 수를 집계하여 Ingress 규칙별 건강 상태 표시"
+    ]
+  },
+  "pv/list": {
+    "name": "PV 목록",
+    "description": "PersistentVolume 목록과 상태",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_pv",
+      "kube_pvc"
+    ]
+  },
+  "pvc/list": {
+    "name": "PVC 목록",
+    "description": "PersistentVolumeClaim 목록과 바인딩 상태",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_pvc",
+      "kube_pv"
+    ]
+  },
+  "object_manifest": {
+    "name": "오브젝트 매니페스트",
+    "description": "K8s 오브젝트의 YAML 매니페스트 조회 (시간별 보관)",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_object_manifest_list"
+    ]
+  },
+  "kube_event": {
+    "name": "쿠버네티스 이벤트",
+    "description": "클러스터 이벤트 목록 (Warning/Normal). Pod/Node/Deployment 등 필터링 가능.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_event"
+    ],
+    "domainKnowledge": [
+      "Warning 이벤트: 문제 징후 (FailedScheduling, OOMKilled, BackOff 등)",
+      "Normal 이벤트: 정상 동작 (Scheduled, Pulled, Created, Started)",
+      "involvedObjectName으로 관련 Pod/Node 확인 가능"
+    ],
+    "analysisGuides": [
+      {
+        "trigger": "문제|경고|Warning|에러|장애",
+        "instruction": "1단계: kube_event 조회 → type=Warning 필터\n2단계: 빈도 높은 이벤트 Top N (reason별 count)\n3단계: 각 Warning 이벤트의 involvedObjectName + message로 영향받는 Pod/Node 식별"
+      }
+    ]
+  },
+  "pod/init_perform": {
+    "name": "Pod 시작 분석",
+    "description": "Pod 시작 시간 분석, 느린 초기화 원인 파악",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_pod"
+    ]
+  },
+  "daily_hitmap": {
+    "name": "애플리케이션 히트맵",
+    "description": "K8s 위 애플리케이션 트랜잭션 응답시간 분포",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "app_counter"
+    ],
+    "domainKnowledge": [
+      "히트맵의 세로축은 응답시간, 가로축은 시간",
+      "점이 높이 분포되면 느린 트랜잭션이 많다는 의미"
+    ]
+  },
+  "new/multi_hitmap": {
+    "name": "멀티서비스 히트맵",
+    "description": "여러 서비스의 트랜잭션 응답시간을 통합 히트맵으로 표시",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "app_counter"
+    ]
+  },
+  "msa": {
+    "name": "MSA 분석",
+    "description": "마이크로서비스 아키텍처 호출 관계 분석",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "app_counter"
+    ]
+  },
+  "stack": {
+    "name": "애플리케이션 스택",
+    "description": "애플리케이션 쓰레드 스택 분석",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "app_counter"
+    ]
+  },
+  "metrics_chart": {
+    "name": "메트릭스 차트",
+    "description": "사용자 정의 메트릭 차트 생성. 모든 카테고리 사용 가능.",
+    "mxqlPaths": [],
+    "tagCountCategories": []
+  },
+  "controlplane/kube_apiserver/dashboard": {
+    "name": "API Server 대시보드",
+    "description": "Kubernetes API Server 모니터링",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_pod"
+    ]
+  },
+  "controlplane/etcd/dashboard": {
+    "name": "etcd 대시보드",
+    "description": "etcd 클러스터 상태 모니터링",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_pod"
+    ]
+  },
+  "controlplane/kube_scheduler/dashboard": {
+    "name": "스케줄러 대시보드",
+    "description": "Kubernetes Scheduler 모니터링",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_pod"
+    ]
+  }
+}

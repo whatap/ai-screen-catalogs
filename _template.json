@@ -1,0 +1,24 @@
+{
+  "$product": "제품명 (예: java, server, postgresql)",
+  "$description": "이 제품의 화면 카탈로그",
+  "$urlPrefix": "URL 접두사 (예: /apm/, /sms/, /database/)",
+  "$maintainer": "담당자 이름",
+
+  "화면키 (URL 마지막 경로)": {
+    "name": "화면 이름 (한글)",
+    "description": "이 화면에서 뭘 볼 수 있는지 1-2문장",
+    "mxqlPaths": [
+      { "path": "카탈로그 path (DevTools Network 탭에서 확인)", "description": "이 쿼리가 뭘 보여주는지" }
+    ],
+    "tagCountCategories": ["MXQL Text로 추가 조회 가능한 태그카운트 카테고리"],
+    "domainKnowledge": [
+      "챗봇이 알아야 할 도메인 지식 (선택)"
+    ],
+    "analysisGuides": [
+      {
+        "trigger": "이 가이드가 동작할 질문 키워드 (정규식, | 로 구분)",
+        "instruction": "Claude가 따를 분석 절차 (단계별로 작성)"
+      }
+    ]
+  }
+}
