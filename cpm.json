@@ -200,9 +200,14 @@
       "DCGM_FI_PROF_GR_ENGINE_ACTIVE"
     ],
     "domainKnowledge": [
-      "GPU 활용현황: Total → Allocated → Active → Effective 단계별 필터링",
-      "GPU Map: 파란색=Active(5분 평균 ≥1%), 회색=Idle. UUID가 MIG-로 시작하면 MIG 인스턴스",
-      "DCGM_FI_DEV_WEIGHTED_GPU_UTIL: 물리 GPU 전체 사용률",
+      "GPU 활용현황 4단계 분류 기준:",
+      "Total: 클러스터 내 전체 물리 GPU 수",
+      "Allocated: DCGM_GPU_PROCESS_UTIL 값이 존재하는 GPU (프로세스가 할당된 GPU)",
+      "Active: 5분 평균 사용률(DCGM_FI_DEV_WEIGHTED_GPU_UTIL) ≥ 1% 인 GPU",
+      "Effective: 현재 사용률(DCGM_FI_DEV_WEIGHTED_GPU_UTIL) > 50% 인 GPU",
+      "GPU Map: 파란색=Active(5분 평균 ≥1%), 회색=Idle(<1%). UUID가 MIG-로 시작하면 MIG 인스턴스",
+      "DCGM_FI_DEV_WEIGHTED_GPU_UTIL: 물리 GPU 1대의 전체 사용률 (0.0~1.0)",
+      "DCGM_GPU_PROCESS_UTIL: 프로세스 할당 여부 (Allocated 판단 기준)",
       "DCGM_FI_PROF_GR_ENGINE_ACTIVE: MIG 프로필별 사용률. 라벨에 Pod 매핑 정보 포함",
       "MIG 개별/Pod 매핑은 이 화면에서 직접 볼 수 없음 — 챗봇이 MCP로 조회해야 함"
     ],
