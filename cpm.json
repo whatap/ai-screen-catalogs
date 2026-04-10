@@ -32,14 +32,17 @@
     ],
     "analysisGuides": [
       {
+        "name": "📊 현황 요약",
         "trigger": "상태|현황|요약|설명",
         "instruction": "1단계: kube_pod 조회 → Running/Waiting/Dead Pod 수 확인\n2단계: container 조회 → CPU/메모리 Top 5 컨테이너\n3단계: 이상 징후 (Dead/Waiting Pod, 높은 RestartCount) 강조"
       },
       {
+        "name": "⚠️ 문제 진단",
         "trigger": "문제|에러|Dead|Waiting|재시작|CrashLoop",
         "instruction": "1단계: kube_pod 조회 → phase가 Waiting/Dead인 Pod 필터\n2단계: kube_event 조회 → Warning 이벤트 확인 (reason, message)\n3단계: 답변: [문제 Pod 목록 + reason] → [이벤트 기반 원인] → [해결 방안]"
       },
       {
+        "name": "🔗 GPU-Pod 매핑",
         "trigger": "GPU|gpu|파드.*GPU|어떤.*쓰",
         "instruction": "DCGM_FI_PROF_GR_ENGINE_ACTIVE PromQL 조회 → MIG별 Pod 매핑 표 작성"
       }
@@ -124,6 +127,7 @@
     ],
     "analysisGuides": [
       {
+        "name": "📊 현황 요약",
         "trigger": "상태|현황|요약",
         "instruction": "1단계: kube_entities → 오브젝트 수 요약\n2단계: kube_stat → Pod/컨테이너 상태별 수\n3단계: kube_event → Warning 이벤트 Top 5\n전체 클러스터 건강 상태를 종합 판단"
       }
@@ -153,6 +157,7 @@
     ],
     "analysisGuides": [
       {
+        "name": "⚠️ 리소스 부족 진단",
         "trigger": "리소스|용량|부족|Pressure|문제",
         "instruction": "1단계: kube_node 조회 → DiskPressure/MemoryPressure/PIDPressure가 True인 노드 확인\n2단계: server_base 조회 → CPU, 메모리 사용률 높은 노드\n3단계: 노드별 Pod 수 대비 allocatable_pods 비교"
       }
@@ -213,14 +218,17 @@
     ],
     "analysisGuides": [
       {
+        "name": "💰 비용 최적화",
         "trigger": "최적화|비용|절감|낭비|효율|추천",
         "instruction": "1단계: DCGM_FI_DEV_WEIGHTED_GPU_UTIL PromQL 조회\n2단계: GPU별 분류 — Idle(0%), 저활용(40%이하), 버스트, 고활용(50%이상)\n3단계: [현황][Idle 회수 ₩150,000/일][스팟 전환 70% 절감][MIG 통합][총 절감액]\nGPU 이름과 수치 필수. 추상적 조언 금지."
       },
       {
+        "name": "📊 현황 요약",
         "trigger": "상태|현황|요약",
         "instruction": "DCGM_FI_DEV_WEIGHTED_GPU_UTIL + GR_ENGINE_ACTIVE 조회 → 전체 GPU 수, Active/Idle, GPU별 사용률 표"
       },
       {
+        "name": "🔗 GPU-Pod 매핑",
         "trigger": "파드|pod|매핑|누가.*사용|어떤.*쓰",
         "instruction": "DCGM_FI_PROF_GR_ENGINE_ACTIVE PromQL → MIG별 Pod 매핑 표"
       }
@@ -244,18 +252,22 @@
     ],
     "analysisGuides": [
       {
+        "name": "💰 비용 최적화",
         "trigger": "최적화|비용|절감|낭비|효율|개선|추천",
         "instruction": "사용자가 최적화/비용 절감을 물어보면 반드시 다음 단계를 수행:\n1단계 - 데이터 수집: DCGM_FI_DEV_WEIGHTED_GPU_UTIL을 PromQL로 조회하여 GPU별 사용률 추이 확보 (최근 24시간 또는 조회 기간)\n2단계 - GPU별 사용 패턴 분류:\n  - Idle GPU: 조회 기간 중 0% 사용률인 시간대가 전체의 50% 이상\n  - 저활용 GPU: 평균 사용률 40% 이하\n  - 버스트 GPU: 간헐적 고사용(80%+) 후 장시간 유휴 패턴\n  - 고활용 GPU: 평균 50% 이상 지속\n3단계 - 구체적 분석 결과를 다음 섹션 형식으로 답변:\n  [섹션1] 전체 클러스터 현황 요약 — 평균 사용률, Idle/저활용/버스트/고활용 GPU 수와 목록 (GPU이름, 유휴일수)\n  [섹션2] Idle GPU 감지 및 회수 추천 — GPU별 유휴 기간, 비용 계산 (GPU 1대 하루 비용 ≈ ₩150,000 기준), 월 낭비 비용 합계\n  [섹션3] 버스트 패턴 감지 및 스팟 전환 추천 — 간헐적 사용 GPU의 스팟 인스턴스 전환 시 약 70% 비용 절감\n  [섹션4] GPU 통합(Consolidation) 기회 — 저활용 GPU를 MIG 파티셔닝으로 통합 가능 여부와 예상 절감액\n  [섹션5] 총 비용 절감 기회 요약 — 각 섹션별 절감액 합산\n반드시 실제 조회 데이터의 GPU 이름(nvidia0, nvidia1 등)과 수치를 명시할 것. 추상적 조언 금지."
       },
       {
+        "name": "📊 현황 요약",
         "trigger": "상태|현황|요약|설명|화면",
         "instruction": "사용자가 현황/상태/화면 설명을 물어보면:\n1단계: DCGM_FI_DEV_WEIGHTED_GPU_UTIL 조회로 각 GPU별 현재 사용률 확보\n2단계: 다음 형식으로 답변:\n  - 이 화면은 GPU 트렌드 화면으로, 물리 GPU별 사용률 추이를 시간대별로 보여줌\n  - 전체 GPU 수, 현재 Active/Idle 비율\n  - GPU별 현재 사용률 목록 (높은 순, GPU 이름과 % 포함)\n  - 주요 패턴 감지: 어떤 GPU가 지속 고사용, 어떤 GPU가 지속 유휴인지\n  - 참고: 이 화면에서는 MIG 인스턴스 개별 활용률이나 Pod-GPU 매핑은 확인 불가. 필요하면 물어보세요."
       },
       {
+        "name": "🔗 GPU-Pod 매핑",
         "trigger": "파드|pod|매핑|누가.*사용|어떤.*쓰",
         "instruction": "사용자가 GPU-Pod 매핑을 물어보면:\n1단계: \"이 화면(GPU 트렌드)에서는 Pod-GPU 매핑을 직접 확인할 수 없습니다\" 안내\n2단계: DCGM_FI_PROF_GR_ENGINE_ACTIVE를 PromQL로 조회 — 라벨에 pod, namespace, container 정보 포함\n3단계: 각 MIG 인스턴스(또는 GPU)별로 매핑된 Pod 이름, 네임스페이스, 사용률을 표로 정리"
       },
       {
+        "name": "🔧 MIG 상세",
         "trigger": "MIG|mig|인스턴스|개별",
         "instruction": "사용자가 MIG 인스턴스 정보를 물어보면:\n1단계: \"이 화면은 물리 GPU 단위 사용률만 보여줍니다. MIG 인스턴스별 활용률을 조회해드리겠습니다\" 안내\n2단계: DCGM_FI_PROF_GR_ENGINE_ACTIVE를 PromQL로 조회\n3단계: MIG 인스턴스별 UUID, 사용률(%), 매핑된 Pod를 표로 정리\n4단계: 물리 GPU의 WEIGHTED_GPU_UTIL과 MIG 인스턴스별 GR_ENGINE_ACTIVE의 관계 설명"
       }
@@ -326,10 +338,12 @@
     ],
     "analysisGuides": [
       {
+        "name": "⚠️ 문제 Pod 진단",
         "trigger": "재시작|CrashLoop|OOM|문제|에러",
         "instruction": "1단계: kube_pod 조회 → RestartCount 높은 순 정렬\n2단계: phase가 Failed/Waiting인 Pod 필터\n3단계: kube_event 조회 → 해당 Pod의 Warning 이벤트\n답변: [문제 Pod 목록 + 재시작횟수] → [원인(OOMKilled/CrashLoop 등)] → [해결 방안]"
       },
       {
+        "name": "📊 리소스 사용량 분석",
         "trigger": "리소스|CPU|메모리|request|limit|사용량",
         "instruction": "1단계: kube_pod 조회 → cpu_total_millis, mem_working_set 확인\n2단계: cpu_per_request(request 대비 사용률 %), memory_per_limit(limit 대비 %) 비교\n3단계: Over-provisioned(사용률 30%이하) 또는 Under-provisioned(사용률 90%이상) Pod 식별"
       }
@@ -359,6 +373,7 @@
     ],
     "analysisGuides": [
       {
+        "name": "❓ Pending 원인 분석",
         "trigger": "왜|원인|이유|해결|스케줄",
         "instruction": "1단계: kube_pod 조회 → phase=Pending인 Pod의 조건(PodScheduled 등) 확인\n2단계: kube_node 조회 → 노드별 allocatable vs 실사용 리소스 비교\n3단계: 답변: [Pending Pod 목록 + reason] → [노드 리소스 현황] → [해결 방안(노드 추가/request 조정/GPU 파티셔닝)]"
       }
@@ -477,6 +492,7 @@
     ],
     "analysisGuides": [
       {
+        "name": "⚠️ Warning 이벤트 분석",
         "trigger": "문제|경고|Warning|에러|장애",
         "instruction": "1단계: kube_event 조회 → type=Warning 필터\n2단계: 빈도 높은 이벤트 Top N (reason별 count)\n3단계: 각 Warning 이벤트의 involvedObjectName + message로 영향받는 Pod/Node 식별"
       }
