@@ -6,6 +6,19 @@
   "containerMap": {
     "name": "컨테이너 맵",
     "description": "Pod/Container 뷰를 선택하여 육각형 맵으로 표시. GPU 지표 JOIN 포함.",
+    "toolRouting": [
+      {
+        "id": "containermap-no-docs-metrics",
+        "description": "Pod/컨테이너 메트릭은 tagCountCategories(kube_pod, container)로 직접 조회 — docs 불필요",
+        "when": {
+          "toolCalled": "docs_search",
+          "argMatches": { "query": "cpu|CPU|memory|메모리|리소스|사용량|usage|pod.*컨테이너|컨테이너.*pod|restart|재시작|OOM" }
+        },
+        "block": {
+          "message": "이 화면에서 Pod/컨테이너 메트릭은 docs가 아닌 실 데이터로 조회해야 합니다. whatap_query_data로 CATEGORY container 또는 kube_pod를 MXQL Text로 조회하세요. 예: CATEGORY container\\nTAGLOAD\\nSELECT [containerName, CpuTotUsage, MemWs]"
+        }
+      }
+    ],
     "mxqlPaths": [],
     "tagCountCategories": [
       "kube_pod",
@@ -28,24 +41,11 @@
       "Container 뷰: kube_con_state/kube_con_state_reason으로 상태 분류",
       "GPU: MIG 모드(DCGM_FI_DEV_MIG_MODE==1)이면 GR_ENGINE_ACTIVE, 아니면 GPU_UTIL",
       "외래 프로젝트: container_foreign_project_mapping으로 APM 프로젝트 연결",
-      "MIG 개별/Pod 매핑은 이 화면에서 직접 볼 수 없음 — 챗봇이 MCP로 조회해야 함"
+      "MIG 개별/Pod 매핑은 이 화면에서 확인 가능 — GPU Map에서 MIG 인스턴스(UUID가 MIG-로 시작)별로 매핑된 Pod 표시",
+      "kube_pod, container 카테고리에는 Pod 라벨이 whatap_kube_label_<라벨명> 필드로 존재. 예: Pod에 app=mistral-7b, gpu=true 라벨 → whatap_kube_label_app, whatap_kube_label_gpu 필드로 조회 가능. 특정 라벨 기반 필터링/그루핑에 활용",
+      "컨테이너에 WhaTap APM 에이전트가 설치된 경우 container 카테고리에 microOid, microOname 필드에 값이 존재. 이 값이 있으면 해당 컨테이너는 APM 프로젝트와 연동된 상태"
     ],
     "analysisGuides": [
-      {
-        "name": "📊 현황 요약",
-        "trigger": "상태|현황|요약|설명",
-        "instruction": "1단계: kube_pod 조회 → Running/Waiting/Dead Pod 수 확인\n2단계: container 조회 → CPU/메모리 Top 5 컨테이너\n3단계: 이상 징후 (Dead/Waiting Pod, 높은 RestartCount) 강조"
-      },
-      {
-        "name": "⚠️ 문제 진단",
-        "trigger": "문제|에러|Dead|Waiting|재시작|CrashLoop",
-        "instruction": "1단계: kube_pod 조회 → phase가 Waiting/Dead인 Pod 필터\n2단계: kube_event 조회 → Warning 이벤트 확인 (reason, message)\n3단계: 답변: [문제 Pod 목록 + reason] → [이벤트 기반 원인] → [해결 방안]"
-      },
-      {
-        "name": "🔗 GPU-Pod 매핑",
-        "trigger": "GPU|gpu|파드.*GPU|어떤.*쓰",
-        "instruction": "DCGM_FI_PROF_GR_ENGINE_ACTIVE PromQL 조회 → MIG별 Pod 매핑 표 작성"
-      }
     ]
   },
   "node/map": {
@@ -193,6 +193,19 @@
   "gpu/dashboard": {
     "name": "GPU 대시보드",
     "description": "GPU 활용현황(Total/Allocated/Active/Effective) + GPU Map(물리+MIG Active/Idle)",
+    "toolRouting": [
+      {
+        "id": "gpu-dashboard-no-docs-cost",
+        "description": "GPU 비용 데이터는 @data:gpu_cost_reference에 이미 포함",
+        "when": {
+          "toolCalled": "docs_search",
+          "argMatches": { "query": "GPU.*비용|GPU.*cost|GPU.*price|GPU.*가격|비용.*절감|비용.*최적화|cost.*optim" }
+        },
+        "block": {
+          "message": "GPU 비용 정보는 시스템 프롬프트의 @data:gpu_cost_reference에 이미 포함되어 있습니다. docs_search 불필요. 해당 참조 데이터를 직접 사용하세요."
+        }
+      }
+    ],
     "mxqlPaths": [],
     "tagCountCategories": [
       "kube_pod",
@@ -204,23 +217,34 @@
       "DCGM_FI_DEV_GPU_UTIL",
       "DCGM_FI_PROF_GR_ENGINE_ACTIVE"
     ],
+    "dataRegistry": {
+      "gpu_cost_reference": {
+        "description": "GPU 모델별 시간당 평균 비용 (KRW). 온프레미스는 실제와 다를 수 있으나 일단 이 기준으로 분석",
+        "data": {
+          "B200": "₩5,600/hr",
+          "H200": "₩9,800/hr",
+          "H100 SXM": "₩6,500/hr",
+          "L40S": "₩5,400/hr",
+          "L4": "₩700/hr",
+          "A100 80GB": "₩3,400/hr",
+          "A100 40GB": "₩2,800/hr",
+          "A40": "₩1,600/hr",
+          "A30": "₩1,200/hr",
+          "V100": "₩2,600/hr",
+          "T4": "₩300/hr"
+        }
+      }
+    },
     "domainKnowledge": [
-      "GPU 활용현황 4단계 분류 기준:",
-      "Total: 클러스터 내 전체 물리 GPU 수",
-      "Allocated: DCGM_GPU_PROCESS_UTIL 값이 존재하는 GPU (프로세스가 할당된 GPU)",
-      "Active: 5분 평균 사용률(DCGM_FI_DEV_WEIGHTED_GPU_UTIL) ≥ 1% 인 GPU",
-      "Effective: 현재 사용률(DCGM_FI_DEV_WEIGHTED_GPU_UTIL) > 50% 인 GPU",
-      "GPU Map: 파란색=Active(5분 평균 ≥1%), 회색=Idle(<1%). UUID가 MIG-로 시작하면 MIG 인스턴스",
-      "DCGM_FI_DEV_WEIGHTED_GPU_UTIL: 물리 GPU 1대의 전체 사용률 (0.0~1.0)",
-      "DCGM_GPU_PROCESS_UTIL: 프로세스 할당 여부 (Allocated 판단 기준)",
-      "DCGM_FI_PROF_GR_ENGINE_ACTIVE: MIG 프로필별 사용률. 라벨에 Pod 매핑 정보 포함",
-      "MIG 개별/Pod 매핑은 이 화면에서 직접 볼 수 없음 — 챗봇이 MCP로 조회해야 함"
+      "GPU 활용현황 4단계: Total(전체) → Allocated(프로세스 할당) → Active(5분 평균≥1%) → Effective(사용률>50%)",
+      "GPU Map: 파란색=Active, 회색=Idle. UUID가 MIG-로 시작하면 MIG 인스턴스",
+      "MIG 개별/Pod 매핑은 이 화면의 GPU Map에서 확인 가능 — MIG 인스턴스(UUID가 MIG-로 시작)별 Active/Idle + 매핑된 Pod 표시"
     ],
     "analysisGuides": [
       {
         "name": "비용 최적화",
         "trigger": "최적화|비용|절감|낭비|효율|추천",
-        "instruction": "사용자가 최적화/비용 절감을 물어보면 반드시 다음 단계를 수행:\n\n1단계 - 사전 질문: 사용자에게 GPU 모델과 환경(클라우드/온프레미스)을 확인. 화면에서 모델명이 보이면 자동 파악.\n\nGPU 모델별 클라우드 참고 비용 (시간당 / 하루 24h 기준, 환율 $1≈₩1,370):\n\n[최신 GPU]\n- B200 (Blackwell): $2.18~$6.03/hr → 약 ₩72,000~₩198,000/일\n- H200: $3.72~$10.60/hr → 약 ₩122,000~₩348,000/일\n- H100 SXM: $2.49~$6.98/hr → 약 ₩82,000~₩229,000/일\n\n[추론/범용]\n- L40S (48GB): $0.26~$7.58/hr → 약 ₩9,000~₩249,000/일\n- L40 (48GB): $1.50~$3.00/hr → 약 ₩49,000~₩99,000/일\n- L4 (24GB, 72W): $0.24~$0.80/hr → 약 ₩8,000~₩26,000/일\n\n[학습/HPC]\n- A100 80GB: $1.29~$3.67/hr → 약 ₩42,000~₩121,000/일\n- A40 (48GB): $0.80~$1.50/hr → 약 ₩26,000~₩49,000/일\n- A30 (24GB): $0.60~$1.20/hr → 약 ₩20,000~₩39,000/일\n- A10 (24GB): $0.50~$1.00/hr → 약 ₩16,000~₩33,000/일\n\n[레거시/저가]\n- V100 (32GB): $0.80~$3.06/hr → 약 ₩26,000~₩101,000/일\n- Tesla T4 (16GB): $0.09~$0.35/hr → 약 ₩3,000~₩12,000/일\n\n온프레미스 환경이면 사용자에게 장당 비용을 직접 물어볼 것. 위 가격은 클라우드 참고가이며 실제와 다를 수 있음을 안내.\n\n2단계 - 데이터 수집: DCGM_FI_DEV_WEIGHTED_GPU_UTIL을 PromQL로 조회 (최소 7일, 야간/주말 패턴 포함)\n\n3단계 - GPU별 사용 패턴 분류 (시간대별 패턴 고려):\n- Idle GPU: 7일 중 0% 사용률인 시간대가 전체의 70% 이상\n- 저활용 GPU: 평균 사용률 40% 이하\n- 버스트 GPU: 간헐적 고사용(80%+) 후 장시간 유휴\n- 고활용 GPU: 평균 50% 이상 지속\n주의: 야간/주말에만 학습하는 GPU는 Idle로 분류하지 말 것\n\n4단계 - 구체적 분석 결과를 다음 섹션으로 답변:\n[섹션1] 전체 클러스터 현황 — GPU 모델, 수량, 평균 사용률, GPU별 분류 목록\n[섹션2] Idle GPU 회수 추천 — GPU별 유휴 기간 + 위 참고 비용으로 낭비 금액 계산\n[섹션3] 버스트 패턴 GPU — 클라우드면 스팟 전환 추천, 온프레미스면 스케줄러 최적화 추천\n[섹션4] GPU 통합 기회 — MIG 지원 GPU(A100/A30/H100/H200)인 경우만 파티셔닝 추천. 비지원 GPU면 스킵.\n[섹션5] 총 절감 기회 요약 + 실행 가능한 조치 (kubectl 명령, 노드 드레인, 스케줄러 설정 등)\n\n반드시 실제 GPU 이름과 수치를 명시. 추상적 조언 금지."
+        "instruction": "1단계 - DCGM_FI_DEV_WEIGHTED_GPU_UTIL PromQL 조회 (최소 7일)\n\n2단계 - GPU별 분류 (야간/주말 학습 GPU 주의):\n- Idle: 0% 시간대 > 70%\n- 저활용: 평균 ≤ 40%\n- 버스트: 간헐 고사용(80%+) 후 유휴\n- 고활용: 평균 > 50% 지속\n\n3단계 - @data:gpu_cost_reference 참고 비용으로 바로 분석 진행. 온프레미스면 정확한 비용을 질문하되, 답을 기다리지 말고 참고 비용으로 먼저 분석할 것.\n답변에 반드시 아래 테이블 포함:\n| GPU | 모델명 | 7일 평균 | 최대 | Pod/용도 | 분류 |\n[섹션1] 전체 현황 — 위 테이블 + GPU 수/평균 사용률\n[섹션2] Idle GPU 회수 — @data:gpu_cost_reference로 낭비 금액 계산 (시간당 비용 × 유휴 시간)\n[섹션3] 버스트 GPU — 시간대 기반 스케줄러 최적화 추천\n[섹션4] MIG 통합(A100/A30/H100/H200만)\n[섹션5] 총 절감 요약 — 절감 방법별 금액 합산\n비용 계산: modelName → @data:gpu_cost_reference 매칭. 온프레미스면 정확한 비용을 질문하되, 답을 기다리지 말고 참고 비용으로 먼저 분석 진행할 것.\n\n반드시 실제 GPU 이름+수치 명시. 추상적 조언 금지."
       },
       {
         "name": "현황 요약",
@@ -237,6 +261,40 @@
   "gpu/trend": {
     "name": "GPU 트렌드",
     "description": "물리 GPU별 사용률 추이. MIG 개별/Pod 매핑은 볼 수 없음.",
+    "toolRouting": [
+      {
+        "id": "gpu-trend-hitmap-redirect",
+        "description": "kv.load GPU 히트맵 데이터는 JSESSIONID 필요 — MCP 토큰 불가",
+        "when": {
+          "toolCalled": "whatap_query_data",
+          "argMatches": { "query": "kv\\.load|stat_gpu_trend" }
+        },
+        "redirect": {
+          "tool": "whatap_yard_query",
+          "transformArgs": "gpu_trend_hitmap_transform"
+        }
+      },
+      {
+        "id": "gpu-trend-promql-allow",
+        "description": "DCGM PromQL 쿼리는 whatap_query_data 허용 (MCP 토큰으로 정상 동작)",
+        "when": {
+          "toolCalled": "whatap_query_data",
+          "argMatches": { "query": "DCGM_FI_" }
+        },
+        "redirect": null
+      },
+      {
+        "id": "gpu-no-docs-cost",
+        "description": "GPU 비용 데이터는 @data:gpu_cost_reference에 이미 포함 — docs 검색 불필요",
+        "when": {
+          "toolCalled": "docs_search",
+          "argMatches": { "query": "GPU.*비용|GPU.*cost|GPU.*price|GPU.*가격|비용.*절감|비용.*최적화|cost.*optim" }
+        },
+        "block": {
+          "message": "GPU 비용 정보는 시스템 프롬프트의 @data:gpu_cost_reference에 이미 포함되어 있습니다. docs_search 불필요. 해당 참조 데이터를 직접 사용하세요."
+        }
+      }
+    ],
     "mxqlPaths": [],
     "tagCountCategories": [
       "kube_pod"
@@ -245,35 +303,67 @@
       "DCGM_FI_DEV_WEIGHTED_GPU_UTIL",
       "DCGM_FI_PROF_GR_ENGINE_ACTIVE"
     ],
+    "queryTemplates": {
+      "gpu_trend_hitmap": {
+        "tool": "whatap_yard_query",
+        "description": "GPU 트렌드 히트맵 — 물리 GPU별 사용률 (kv.load + label_info JOIN)",
+        "args": { "type": "mxql", "path": "text" },
+        "mqlTemplate": "kv.load {table: stat_gpu_trend_hitmap-{{epoch}}}\nFILTER {key: t, over: {{stime}}}\nFILTER {key: t, under: {{etime}}}\nSELECT [t, UUID, value, max_value, min_value]\nUNFOLD [UUID, value, max_value, min_value]\nRENAME {src:value, dst:avg_value}\nJOIN {query: label_info, pk: UUID, type: inner}\nSUB label_info\n>> match DCGM_FI_DEV_WEIGHTED_GPU_UTIL\nLAST-ONLY [UUID]\nEND",
+        "autoParams": {
+          "stime": { "type": "relativeMs", "default": "1d" },
+          "etime": { "type": "now" },
+          "epoch": { "type": "monthStartUTC", "from": "stime" }
+        },
+        "returnFields": ["UUID", "avg_value", "max_value", "min_value", "t", "modelName", "Hostname", "gpu", "pod", "namespace", "node", "cluster"]
+      },
+      "gpu_promql_engine_active": {
+        "tool": "whatap_query_data",
+        "description": "MIG 인스턴스별 GPU 엔진 활용률 (PromQL)",
+        "args": { "query": "DCGM_FI_PROF_GR_ENGINE_ACTIVE" },
+        "autoParams": {
+          "timeRange": { "type": "relativeStr", "default": "1h" }
+        },
+        "returnFields": ["gpu", "UUID", "pod", "namespace", "container", "modelName"]
+      }
+    },
+    "dataRegistry": {
+      "gpu_cost_reference": {
+        "description": "GPU 모델별 시간당 평균 비용 (KRW). 온프레미스는 실제와 다를 수 있으나 일단 이 기준으로 분석",
+        "data": {
+          "B200": "₩5,600/hr",
+          "H200": "₩9,800/hr",
+          "H100 SXM": "₩6,500/hr",
+          "L40S": "₩5,400/hr",
+          "L4": "₩700/hr",
+          "A100 80GB": "₩3,400/hr",
+          "A100 40GB": "₩2,800/hr",
+          "A40": "₩1,600/hr",
+          "A30": "₩1,200/hr",
+          "V100": "₩2,600/hr",
+          "T4": "₩300/hr"
+        }
+      }
+    },
     "domainKnowledge": [
       "물리 GPU별 사용률(WEIGHTED_GPU_UTIL) 추이 표시",
-      "데이터 소스: kv.load stat_gpu_trend_hitmap 테이블 (시간별 avg/max/min 집계)",
-      "label_info JOIN 시 modelName, pod, namespace, node, cluster 등 메타정보 포함",
-      "kv.load 테이블명: stat_gpu_trend_hitmap-{월초UTC밀리초} (예: stat_gpu_trend_hitmap-1775001600000)",
-      "$epoch 계산법: new Date(\"2026-04-01T00:00:00Z\").getTime()",
       "볼 수 없는 것: MIG 개별 활용률, POWER/TEMP/MEMORY",
-      "사용자가 MIG/Pod 물어보면 → GR_ENGINE_ACTIVE PromQL로 조회"
+      "사용자가 MIG/Pod 물어보면 → @query:gpu_promql_engine_active로 조회"
     ],
     "analysisGuides": [
       {
         "name": "비용 최적화",
         "trigger": "최적화|비용|절감|낭비|효율|개선|추천",
-        "instruction": "사용자가 최적화/비용 절감을 물어보면 반드시 다음 단계를 수행:\n\n1단계 - 분류 기준 확인:\n화면과 동일한 분류 기준을 사용자에게 제시:\n- 저활용 (<50%): 옅은 하늘색 — 비용 절감 대상\n- 활용 (50~80%): 파란색 — 정상\n- 고활용 (80%+): 진한 파란색/빨간색 — 과부하 주의\n\"이 기준으로 분석할까요, 아니면 다른 기준을 원하시나요?\"\n여기서 멈추고 사용자 응답을 기다릴 것. 데이터 조회하지 말 것.\n\n2단계 - 데이터 수집:\nwhatap_yard_query(type=\"mxql\", path=\"text\")로 GPU 트렌드 히트맵 데이터 조회 (최소 7일).\nparams의 mql에 아래 쿼리를, stime/etime에 조회 범위를 넣을 것:\nkv.load {table: stat_gpu_trend_hitmap-$epoch}\nFILTER {key: t, over: $stime}\nFILTER {key: t, under: $etime}\nSELECT [t, UUID, value, max_value, min_value]\nUNFOLD [UUID, value, max_value, min_value]\nRENAME {src:value, dst:avg_value}\nJOIN {query: label_info, pk: UUID, type: inner}\nSUB label_info\n>> match DCGM_FI_DEV_WEIGHTED_GPU_UTIL\nLAST-ONLY [UUID]\nEND\n$epoch = 조회 기간이 속한 월의 1일 00:00 UTC 밀리초.\n반환 필드에서 modelName, pod, namespace, node 자동 포함.\n\nGPU 모델별 클라우드 참고 비용 (시간당 / 하루 24h 기준, 환율 $1≈₩1,370):\n[최신 GPU]\n- B200 (Blackwell): $2.18~$6.03/hr → 약 ₩72,000~₩198,000/일\n- H200: $3.72~$10.60/hr → 약 ₩122,000~₩348,000/일\n- H100 SXM: $2.49~$6.98/hr → 약 ₩82,000~₩229,000/일\n[추론/범용]\n- L40S (48GB): $0.26~$7.58/hr → 약 ₩9,000~₩249,000/일\n- L4 (24GB, 72W): $0.24~$0.80/hr → 약 ₩8,000~₩26,000/일\n[학습/HPC]\n- A100 80GB: $1.29~$3.67/hr → 약 ₩42,000~₩121,000/일\n- A100 40GB: $1.10~$3.00/hr → 약 ₩36,000~₩99,000/일\n- A40 (48GB): $0.80~$1.50/hr → 약 ₩26,000~₩49,000/일\n- A30 (24GB): $0.60~$1.20/hr → 약 ₩20,000~₩39,000/일\n[레거시/저가]\n- V100 (32GB): $0.80~$3.06/hr → 약 ₩26,000~₩101,000/일\n- Tesla T4 (16GB): $0.09~$0.35/hr → 약 ₩3,000~₩12,000/일\n온프레미스면 사용자에게 장당 비용을 직접 물어볼 것.\n\n3단계 - GPU별 사용 패턴 분류:\nkv.load 결과의 avg_value로 각 GPU별 7일 평균 계산.\n각 값은 반드시 단일 숫자로 표시 (범위 X).\n- 저활용: 평균 사용률 < 50%\n- 활용: 평균 사용률 50~80%\n- 고활용: 평균 사용률 > 80%\n주의: 야간/주말에만 학습하는 GPU는 시간대별 패턴 확인 후 분류.\n\n4단계 - 분석 결과 답변:\n| GPU | 모델명 | 7일 평균 | 최대 | Pod | 분류 | 비용 근거 |\n비용 근거: modelName에서 모델 확인 → 위 참고 비용표에서 매칭.\n[섹션1] 전체 현황 — GPU 수, 모델별 수량, 평균 사용률\n[섹션2] 저활용 GPU — 유휴 기간 + 비용(비용 근거 명시)\n[섹션3] 고활용 GPU — 과부하 위험, 스케일아웃 검토\n[섹션4] GPU 통합 기회 — MIG 지원 GPU(A100/A30/H100/H200)만 파티셔닝 추천\n[섹션5] 총 절감 기회 요약\n\n반드시 실제 GPU 이름과 수치를 명시. 추상적 조언 금지. 실행 명령어는 제시하지 말 것."
+        "instruction": "1단계 - 분류 기준 확인 (사용자 응답 대기, 데이터 조회 금지):\n저활용(<50%) / 활용(50~80%) / 고활용(80%+) 기준 제시 후 확인\n\n2단계 - @query:gpu_trend_hitmap(timeRange=7d) 실행\n\n3단계 - GPU별 분류: avg_value로 7일 평균 계산, 단일 숫자 표시\n야간/주말 학습 GPU는 시간대별 패턴 확인 후 분류\n\n4단계 - 답변 형식:\n| GPU | 모델명 | 7일 평균 | 최대 | Pod | 분류 |\n[섹션1] 전체 현황 — 위 테이블 + GPU 수/모델별 수량/평균 사용률\n[섹션2] 저활용 GPU — 유휴 기간 + @data:gpu_cost_reference로 낭비 금액 계산 (시간당 비용 × 유휴 시간)\n[섹션3] 고활용 GPU — 과부하 위험 + 스케일아웃 검토\n[섹션4] MIG 통합 기회(A100/A30/H100/H200만)\n[섹션5] 총 절감 기회 요약 — 절감 방법별 금액 합산\n비용 계산: modelName → @data:gpu_cost_reference 매칭. 온프레미스면 정확한 비용을 질문하되, 답을 기다리지 말고 참고 비용으로 먼저 분석 진행할 것.\n\n반드시 실제 GPU 이름+수치 명시. 추상적 조언/실행 명령어 금지."
       },
       {
         "name": "현황 요약",
         "trigger": "상태|현황|요약|설명|화면",
-        "instruction": "사용자가 현황/상태/화면 설명을 물어보면:\n1단계: whatap_yard_query(type=\"mxql\", path=\"text\")로 GPU 트렌드 히트맵 데이터 조회 (최근 1일).\nparams의 mql에 아래 쿼리를, stime/etime에 조회 범위를 넣을 것:\nkv.load {table: stat_gpu_trend_hitmap-$epoch}\nFILTER {key: t, over: $stime}\nFILTER {key: t, under: $etime}\nSELECT [t, UUID, value, max_value, min_value]\nUNFOLD [UUID, value, max_value, min_value]\nRENAME {src:value, dst:avg_value}\nJOIN {query: label_info, pk: UUID, type: inner}\nSUB label_info\n>> match DCGM_FI_DEV_WEIGHTED_GPU_UTIL\nLAST-ONLY [UUID]\nEND\n\n2단계: 다음 형식으로 답변:\n- 이 화면은 GPU 트렌드 화면으로, 물리 GPU별 사용률 추이를 시간대별로 보여줌\n- 전체 GPU 수, 모델명, 노드별 분포\n- GPU별 현재 사용률 목록 (높은 순):\n  | GPU | 모델명 | 평균 | 최대 | 최소 | Pod | 노드 |\n- 활용 분류: 저활용(<50%) / 활용(50~80%) / 고활용(80%+)\n- 참고: MIG 인스턴스 개별 활용률이나 Pod-GPU 매핑 상세는 이 화면에서 확인 불가. 필요하면 물어보세요."
+        "instruction": "1단계 - @query:gpu_trend_hitmap(timeRange=1d) 실행\n\n2단계 - 답변 형식:\n- 화면 설명: 물리 GPU별 사용률 추이 (시간대별)\n- 전체 GPU 수, 모델명, 노드별 분포\n- GPU별 사용률 (높은 순): | GPU | 모델명 | 평균 | 최대 | 최소 | Pod | 노드 |\n- 활용 분류: 저활용(<50%) / 활용(50~80%) / 고활용(80%+)\n- 참고: MIG 개별/Pod-GPU 매핑 상세는 이 화면에서 불가, 필요시 안내"
       },
       {
         "name": "GPU-Pod 매핑",
         "trigger": "파드|pod|매핑|누가.*사용|어떤.*쓰",
-        "instruction": "사용자가 GPU-Pod 매핑을 물어보면:\n1단계: \"이 화면(GPU 트렌드)에서는 Pod-GPU 매핑을 직접 확인할 수 없습니다\" 안내\n2단계: DCGM_FI_PROF_GR_ENGINE_ACTIVE를 PromQL로 조회 — 라벨에 pod, namespace, container 정보 포함\n3단계: 각 MIG 인스턴스(또는 GPU)별로 매핑된 Pod 이름, 네임스페이스, 사용률을 표로 정리"
-      },
-      {
-        "name": "MIG 상세",
-        "trigger": "MIG|mig|인스턴스|개별",
-        "instruction": "사용자가 MIG 인스턴스 정보를 물어보면:\n1단계: \"이 화면은 물리 GPU 단위 사용률만 보여줍니다. MIG 인스턴스별 활용률을 조회해드리겠습니다\" 안내\n2단계: DCGM_FI_PROF_GR_ENGINE_ACTIVE를 PromQL로 조회\n3단계: MIG 인스턴스별 UUID, 사용률(%), 매핑된 Pod를 표로 정리\n4단계: 물리 GPU의 WEIGHTED_GPU_UTIL과 MIG 인스턴스별 GR_ENGINE_ACTIVE의 관계 설명"
+        "instruction": "1단계 - \"이 화면에서는 Pod-GPU 매핑을 직접 확인할 수 없습니다\" 안내\n2단계 - @query:gpu_promql_engine_active 실행 (라벨에 pod, namespace, container 포함)\n3단계 - GPU별 매핑된 Pod, 네임스페이스, 사용률을 표로 정리"
       }
     ],
     "mxqlQueries": [
