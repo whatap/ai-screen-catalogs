@@ -9,9 +9,16 @@
     "description": "서버 전체 CPU, 메모리, 디스크 사용률 현황. Top 5 차트(9개 지표 선택 가능)와 리소스맵, 프로세스 테이블 제공.",
     "mxqlPaths": [],
     "tagCountCategories": [
-      "agent_list"
+      "agent_list",
+      "server_base",
+      "server_cpu_core",
+      "server_extra_counter",
+      "server_network",
+      "server_disk",
+      "server_process",
+      "server_netstat"
     ],
-    "note": "flexquery(tagcount, flexquery path)로 agent_list 조회. Top 5 차트는 server_resource 템플릿.",
+    "note": "infra /cache/last·/cache/lastall은 SM*Cache 조회(SM*Core의 dual-write로 server_base/_cpu_core/_extra_counter/_network/_disk 태그카운트에 mirror). /cache/last의 tcpv4_established|filedescriptors item은 server_netstat 직접 조회. /cache/process는 MXQL(ServerProcessService-get*MaxOrderTopList.mql)로 server_process 조회. /histories는 SMNutCore(태그카운트 mirror 없음). Top 5 차트는 Flex 보드의 server_resource_top100 템플릿 위젯 재사용.",
     "yardApis": [
       {
         "type": "tagcount",
@@ -70,8 +77,14 @@
     "name": "리소스 이퀄라이저",
     "description": "여러 서버의 지표를 라인 차트로 비교",
     "mxqlPaths": [],
-    "tagCountCategories": [],
-    "note": "전용 InfraMultiLine API 사용",
+    "tagCountCategories": [
+      "server_base",
+      "server_cpu_core",
+      "server_extra_counter",
+      "server_network",
+      "server_disk"
+    ],
+    "note": "전용 InfraMultiLine API 사용. /cache/lastall은 SM*Cache 조회지만 동일 데이터가 SM*Core의 dual-write로 태그카운트에 저장됨.",
     "yardApis": [
       {
         "type": "infra",
@@ -84,8 +97,14 @@
     "name": "컴파운드아이",
     "description": "여러 서버의 핵심 지표를 한눈에 비교",
     "mxqlPaths": [],
-    "tagCountCategories": [],
-    "note": "전용 CompoundEye API 사용",
+    "tagCountCategories": [
+      "server_base",
+      "server_cpu_core",
+      "server_extra_counter",
+      "server_network",
+      "server_disk"
+    ],
+    "note": "전용 CompoundEye API 사용. /smex는 SM*Cache 조회지만 동일 데이터가 SM*Core의 dual-write로 태그카운트에 저장됨.",
     "restApis": [
       {
         "method": "POST",
@@ -111,7 +130,7 @@
     "description": "서버별 CPU, 메모리, 디스크 사용률을 색상 블록으로 시각화. 이상 서버를 한눈에 식별.",
     "mxqlPaths": [],
     "tagCountCategories": [],
-    "note": "ResourceBoard 내부 컴포넌트와 동일한 시각화를 단독 화면으로 제공",
+    "note": "ResourceBoard 내부 컴포넌트와 동일한 시각화를 단독 화면으로 제공. /histories·/cache/histories·/histories/selected 모두 NutMapSelector → SMNutCore/SMNutCache → SMNutDB(자체 파일 DB) 경유. 태그카운트 mirror 없음.",
     "yardApis": [
       {
         "type": "infra",
@@ -134,8 +153,17 @@
     "name": "서버 인벤토리 맵",
     "description": "서버 자산을 시각적으로 표시. 그룹별 성능 요약.",
     "mxqlPaths": [],
-    "tagCountCategories": [],
-    "note": "infra-server API (dashboard-page/*) 사용",
+    "tagCountCategories": [
+      "agent_list",
+      "infra_cpu",
+      "infra_mem",
+      "infra_swap",
+      "infra_network",
+      "infra_disk_perf",
+      "infra_gpu",
+      "infra_filesystem"
+    ],
+    "note": "infra-server API (dashboard-page/*, group-detail-page/*) 사용. get-server-inventories-with-metric.mql이 agent_list(FLEXLOAD) + infra_cpu/mem/swap/network/disk_perf/gpu(TAGLOAD) 조회, file-systems-by-group-and-keys.mql이 infra_filesystem(TAGLOAD) 조회 + kv.load server_inventory/server_inventory_custom JOIN.",
     "restApis": [
       {
         "method": "POST",
@@ -259,9 +287,14 @@
     "description": "전체 서버 목록과 상태, CPU/메모리 사용률",
     "mxqlPaths": [],
     "tagCountCategories": [
-      "agent_list"
+      "agent_list",
+      "server_base",
+      "server_cpu_core",
+      "server_extra_counter",
+      "server_network",
+      "server_disk"
     ],
-    "note": "sm/v2 API 사용 + FLEXLOAD agent_list",
+    "note": "sm/v2 API는 AgentStatus + SM*Cache 조회지만 동일 데이터가 SM*Core의 dual-write로 태그카운트에 저장됨. compare는 장기 범위에서 cube 파일 사용(태그카운트 미러 없음).",
     "restApis": [
       {
         "method": "POST",
@@ -306,9 +339,15 @@
     "description": "특정 서버의 CPU, 메모리, 디스크, 네트워크, 프로세스 상세",
     "mxqlPaths": [],
     "tagCountCategories": [
-      "server_disk"
+      "server_base",
+      "server_cpu_core",
+      "server_extra_counter",
+      "server_network",
+      "server_disk",
+      "server_process",
+      "server_process_all"
     ],
-    "note": "sm/v2(/oid/{oid} 정보) + sm(/oid/{oid}/historyex, cube 시계열) + MXQL Text(server_disk) 사용",
+    "note": "sm/v2 /oid/{oid}·sm /historyex는 SM*Cache/SM*Core 경유지만 동일 데이터가 태그카운트에 dual-write됨. /cube·/cube/hour는 5m/1h 큐브(태그카운트 미러 없음, cube only). /proc/groupex2는 server_process(그룹)·server_process_all(raw), /proc/group/{groupId}는 cube only.",
     "restApis": [
       {
         "method": "POST",
@@ -378,8 +417,11 @@
     "name": "프로세스 목록",
     "description": "서버별 프로세스 CPU, 메모리(RSS), 디스크 I/O 사용량. 프로세스 그룹핑 지원.",
     "mxqlPaths": [],
-    "tagCountCategories": [],
-    "note": "sm/v2 API 사용. 서버 상세의 프로세스 탭과 동일 데이터를 전체 서버 대상으로 조회.",
+    "tagCountCategories": [
+      "server_process",
+      "server_process_all"
+    ],
+    "note": "sm/v2 API 사용. /proc/groupex2는 SMProcCache/SMProcGroupCache 경유지만 SMProcessCore가 server_process(그룹)·server_process_all(raw) 태그카운트에 dual-write.",
     "yardApis": [
       {
         "type": "sm",
@@ -412,8 +454,11 @@
     "name": "GPU 성능요약",
     "description": "서버 GPU 사용률, 온도, 전력 모니터링",
     "mxqlPaths": [],
-    "tagCountCategories": [],
-    "note": "infra-gpu API (performance/summary) + series/v4 사용",
+    "tagCountCategories": [
+      "infra_gpu_id",
+      "infra_gpu_process"
+    ],
+    "note": "infra-gpu API (performance/summary) + series/v4 사용. GpuDashboardService가 infra_gpu_id(최신/5m) + infra_gpu_process(GPU별 프로세스 메트릭, 5m)를 unfold로 조회. series/v4 /fold-tagc/infra_gpu_id는 infra_gpu_id 카테고리 fold 조회. 인벤토리는 kv:gpu_inventory.",
     "yardApis": [
       {
         "type": "infra-gpu",
@@ -470,8 +515,10 @@
     "name": "가용성 (다운체크)",
     "description": "서버 가동 시간 및 가용성 분석",
     "mxqlPaths": [],
-    "tagCountCategories": [],
-    "note": "전용 TimeAvailability API 사용",
+    "tagCountCategories": [
+      "server_down_check"
+    ],
+    "note": "전용 TimeAvailability API 사용. SMDownCheckCore가 file DB 기록과 함께 server_down_check 태그카운트에 dual-write(addAsTagCount).",
     "yardApis": [
       {
         "type": "sm",
