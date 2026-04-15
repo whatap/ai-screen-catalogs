@@ -1,49 +1,102 @@
 {
   "$product": "browser",
-  "$description": "브라우저(RUM) 모니터링 화면 카탈로그 — 프론트 소스 체계적 검증 완료",
+  "$description": "Browser 모니터링(RUM) 화면 카탈로그 - BrowserRouter.tsx 라우트 + 사이드바 메뉴(대시보드/Flex 보드/분석/통계) 기반",
   "$urlPrefix": "/browser/",
-  "$maintainer": "TODO: 브라우저 담당자",
+  "$maintainer": "고지훈",
   "browser_live_stats": {
     "name": "브라우저 모니터링 대시보드",
-    "description": "페이지 로드, AJAX, 에러, 세션, Core Web Vitals 통합 대시보드 (ContainerRUM 템플릿)",
+    "description": "PV/세션/페이지 로드/AJAX/에러/Core Web Vitals/지역별 사용자를 통합 표시하는 RUM 메인 대시보드.",
     "mxqlPaths": [],
     "tagCountCategories": [
-      "rum_page_load_each_page",
-      "rum_page_load_browser_each_page",
-      "rum_page_load_count_topn",
-      "rum_page_load_time_topn",
       "rum_ajax_each_page",
       "rum_ajax_hitmap",
-      "rum_ajax_load_count",
-      "rum_ajax_load_time_topn",
-      "rum_error_count",
+      "rum_country_region_each_page",
       "rum_error_each_page",
+      "rum_page_load_browser_each_page",
+      "rum_page_load_each_page",
       "rum_session_count",
-      "rum_user_session",
-      "rum_web_vitals_each_page",
-      "rum_web_vitals_lcp_time_topn",
-      "rum_web_vitals_fid_time_topn",
-      "rum_web_vitals_cls_time_topn",
-      "rum_country_region_each_page"
+      "rum_web_vitals_each_page"
     ],
-    "source": "templates/browser_live_stats.json"
+    "dataRegistry": {
+      "core_web_vitals_thresholds": {
+        "description": "Google Core Web Vitals 기준값 (2024). Good/Needs Improvement/Poor 3단계, p75 기준 평가",
+        "data": {
+          "LCP": { "good": "<=2500ms", "needs_improvement": "2500-4000ms", "poor": ">4000ms" },
+          "FID": { "good": "<=100ms", "needs_improvement": "100-300ms", "poor": ">300ms" },
+          "INP": { "good": "<=200ms", "needs_improvement": "200-500ms", "poor": ">500ms" },
+          "CLS": { "good": "<=0.1", "needs_improvement": "0.1-0.25", "poor": ">0.25" },
+          "FCP": { "good": "<=1800ms", "needs_improvement": "1800-3000ms", "poor": ">3000ms" },
+          "TTFB": { "good": "<=800ms", "needs_improvement": "800-1800ms", "poor": ">1800ms" }
+        }
+      }
+    },
+    "domainKnowledge": [
+      "RUM(Real User Monitoring): 실제 사용자 브라우저에서 수집한 성능 데이터",
+      "Core Web Vitals 3대 지표: LCP(렌더링), INP(상호작용, FID 대체됨 2024.03), CLS(레이아웃 안정성)",
+      "위젯별 카테고리 매핑:",
+      "- rum_page_load_each_page: 페이지 로드 (count/time Top N, 타임라인)",
+      "- rum_page_load_browser_each_page: 브라우저별 페이지 로드 바 차트",
+      "- rum_web_vitals_each_page: Core Web Vitals 지표 (LCP/INP/CLS)",
+      "- rum_ajax_each_page: AJAX 호출 통계, 4xx/5xx 카운트",
+      "- rum_ajax_hitmap: AJAX 히트맵 + 페이지 로드 히트맵",
+      "- rum_error_each_page: 에러 Top N (error_message, error_type 태그)",
+      "- rum_country_region_each_page: 국가/지역별 페이지뷰 지도",
+      "- rum_session_count: 사용자 세션 수 (logbits 기반, 2d)",
+      "페이지 그룹(page_group): URL 파라미터 정규화 단위 (/product/:id 형태)"
+    ],
+    "analysisGuides": [
+      {
+        "name": "현황 요약",
+        "trigger": "상태|현황|요약|개요",
+        "instruction": "1단계: rum_page_load_each_page -> 페이지별 로드 count/time\n2단계: rum_session_count -> 활성 세션 수\n3단계: rum_error_each_page -> 에러 Top N\n4단계: rum_web_vitals_each_page -> LCP/INP/CLS 지표\n5단계: rum_country_region_each_page -> 지역 분포\n6단계: @data:core_web_vitals_thresholds로 Good/Poor 분류\n답변: [PV/세션 수] -> [페이지 로드 Top] -> [에러 Top] -> [CWV 상태] -> [지역 분포]"
+      },
+      {
+        "name": "Core Web Vitals 빠른 진단",
+        "trigger": "CWV|core.*web|LCP|INP|CLS|구글|SEO|순위",
+        "instruction": "1단계: rum_web_vitals_each_page -> LCP/INP/CLS의 p75 조회\n2단계: @data:core_web_vitals_thresholds로 Good/Needs Improvement/Poor 분류\n3단계: 페이지별 분포 -> 악화 페이지 Top 식별\n답변: [3대 지표 상태표] -> [악화 페이지] -> [페이지 로드 통계 화면 드릴다운 권장]"
+      },
+      {
+        "name": "트래픽/지역 분포 분석",
+        "trigger": "트래픽|국가|지역|어디서|사용자.*분포",
+        "instruction": "1단계: rum_country_region_each_page -> 국가/지역별 PV\n2단계: rum_session_count -> 동시 세션 추이\n3단계: 주요 트래픽 국가 vs 평균 페이지 로드 시간 비교(rum_page_load_each_page)\n답변: [국가별 PV Top] -> [트래픽 비중 큰 지역의 성능] -> [CDN/리전 검토 필요 여부]"
+      }
+    ]
   },
   "browser_error_stats": {
     "name": "브라우저 에러",
-    "description": "에러 유형별, 디바이스별, 페이지별 에러 분석 (ContainerRUM 템플릿)",
+    "description": "JS 에러 발생 추이, 디바이스별 에러 분포, 페이지 로드 대조를 표시하는 에러 대시보드.",
     "mxqlPaths": [],
     "tagCountCategories": [
       "rum_error_total_each_page",
-      "rum_error_count_by_device",
       "rum_error_device_each_page",
-      "rum_page_load_each_page",
-      "rum_today_page_load_count"
+      "rum_page_load_each_page"
     ],
-    "source": "templates/browser_error_stats.json"
+    "domainKnowledge": [
+      "rum_error_total_each_page: 페이지별 에러 총합",
+      "rum_error_device_each_page: 디바이스별 에러 분포",
+      "rum_page_load_each_page: 에러 대조용 페이지 로드 참조"
+    ],
+    "analysisGuides": [
+      {
+        "name": "에러 발생 추이 분석",
+        "trigger": "에러|급증|증가|추이|발생",
+        "instruction": "1단계: rum_error_total_each_page -> 시간대별 에러 카운트 추이\n2단계: rum_error_device_each_page -> 디바이스별 분포 (특정 환경 한정 여부)\n3단계: rum_page_load_each_page와 대조 -> 페이지 로드 증가와 비례하는지(자연 증가) vs 비정상 급증\n답변: [시간대별 에러 추이] -> [디바이스 분포] -> [원인 추정(배포/환경/특정 페이지)]"
+      },
+      {
+        "name": "디바이스/환경별 에러 진단",
+        "trigger": "디바이스|모바일|데스크톱|환경|호환성|특정.*기기",
+        "instruction": "1단계: rum_error_device_each_page -> 디바이스별 에러 카운트 비교\n2단계: 모바일 vs 데스크톱 비율 -> 비정상 편향 식별\n3단계: 특정 디바이스만 에러가 높으면 -> error_statistics 화면에서 browser/os/version 드릴다운\n답변: [디바이스별 에러 비율] -> [편향 환경] -> [error_statistics 후속 분석 권장]"
+      },
+      {
+        "name": "페이지 로드와 에러 상관 분석",
+        "trigger": "상관|연관|페이지.*에러|어느.*페이지|영향",
+        "instruction": "1단계: rum_page_load_each_page -> 페이지별 PV\n2단계: rum_error_total_each_page -> 페이지별 에러\n3단계: 에러율 = 에러/PV 계산 -> 에러율 높은 페이지 Top N\n답변: [에러율 높은 페이지 표] -> [PV 대비 비정상 비중] -> [개별 에러 추적은 browser_error_tracking 안내]"
+      }
+    ]
   },
   "browser_pageload_stats": {
     "name": "페이지 로드",
-    "description": "페이지 로드 성능 대시보드 (ContainerRUM 템플릿)",
+    "description": "페이지 로드, AJAX, 리소스, SPA 라우트 변경을 통합한 페이지 성능 대시보드.",
     "mxqlPaths": [],
     "tagCountCategories": [
       "rum_page_load_each_page",
@@ -51,139 +104,407 @@
       "rum_page_load_resource_each_page",
       "rum_router_change_all_page"
     ],
-    "source": "templates/browser_pageload_stats.json"
+    "domainKnowledge": [
+      "rum_page_load_each_page: 페이지별 로드 성능 (loadTime, FCP, LCP, TTFB)",
+      "rum_page_load_ajax_each_page: 페이지 로드 중 호출된 AJAX",
+      "rum_page_load_resource_each_page: 페이지 로드 중 로딩된 리소스",
+      "rum_router_change_all_page: SPA 라우트 변경 이벤트"
+    ],
+    "analysisGuides": [
+      {
+        "name": "페이지 로드 병목 분석",
+        "trigger": "느린|병목|로드.*시간|성능",
+        "instruction": "1단계: rum_page_load_each_page -> 페이지별 loadTime Top N\n2단계: rum_page_load_ajax_each_page -> 해당 페이지의 AJAX 비중\n3단계: rum_page_load_resource_each_page -> 리소스 비중\n4단계: AJAX/리소스/렌더 중 어디에서 시간이 많이 드는지 식별\n5단계: rum_router_change_all_page -> SPA 라우트 변경(Soft navigation)인지 초기 로드인지 분리\n답변: [느린 페이지 Top] -> [구간별 시간 분해] -> [최적화 권장(AJAX/리소스/렌더)]"
+      },
+      {
+        "name": "초기 로드 vs SPA 전환 비교",
+        "trigger": "SPA|라우트|전환|초기.*로드|soft.*nav",
+        "instruction": "1단계: rum_page_load_each_page -> 초기(Hard) 로드 시간\n2단계: rum_router_change_all_page -> SPA 라우트 변경(Soft navigation) 시간\n3단계: 두 패턴의 시간/빈도 비교\n4단계: SPA 전환이 느리면 -> 데이터 fetch/렌더 최적화 / 초기 로드가 느리면 -> 번들/이미지 최적화\n답변: [초기 로드 vs SPA 전환 표] -> [어느 쪽이 더 느린지] -> [개선 방향]"
+      },
+      {
+        "name": "AJAX/리소스 비중 분석",
+        "trigger": "AJAX|리소스|비중|어디.*시간",
+        "instruction": "1단계: rum_page_load_each_page 대비 rum_page_load_ajax_each_page 비율 계산\n2단계: rum_page_load_resource_each_page 비율 계산\n3단계: 페이지별로 AJAX 의존 vs 리소스 의존 분류\n답변: [페이지별 AJAX/리소스 비중 표] -> [최적화 우선순위(AJAX 화면 / 리소스 화면 권장)]"
+      }
+    ]
   },
   "browser_resource_stats": {
     "name": "리소스",
-    "description": "리소스(JS/CSS/이미지) 로딩 성능 (ContainerRUM 템플릿)",
+    "description": "정적 리소스(JS/CSS/이미지/폰트) 로딩 성능과 페이지별 리소스 통계 대시보드.",
     "mxqlPaths": [],
     "tagCountCategories": [
-      "rum_resource_all_page",
-      "rum_resource_each_page"
+      "rum_resource_each_page",
+      "rum_resource_all_page"
     ],
-    "source": "templates/browser_resource_stats.json"
+    "domainKnowledge": [
+      "rum_resource_each_page: 페이지별 리소스 통계",
+      "rum_resource_all_page{m5}: 전체 리소스 5분 집계"
+    ],
+    "analysisGuides": [
+      {
+        "name": "리소스 부하 분석",
+        "trigger": "리소스|용량|이미지|JS|CSS|폰트|크기",
+        "instruction": "1단계: rum_resource_all_page{m5} -> 전체 리소스 로딩 추이\n2단계: rum_resource_each_page -> 페이지별 리소스 수/크기 Top N\n3단계: 큰 리소스 식별 -> 이미지(WebP/AVIF 변환), JS(코드 스플리팅), 폰트(display: swap)\n답변: [리소스 비중 Top] -> [페이지별 부하] -> [최적화 권장]"
+      },
+      {
+        "name": "리소스 추이 모니터링",
+        "trigger": "추이|증가|변화|모니터링",
+        "instruction": "1단계: rum_resource_all_page{m5} -> 5분 단위 리소스 로딩 시간 추이\n2단계: 평소 대비 급증 시간대 식별\n3단계: 해당 시간대의 rum_resource_each_page -> 특정 페이지/리소스 식별\n답변: [시간대별 추이] -> [급증 구간] -> [원인 페이지/리소스]"
+      }
+    ]
   },
   "browser_ajax_stats": {
     "name": "AJAX",
-    "description": "AJAX 호출 성능 (ContainerRUM 템플릿)",
+    "description": "페이지 그룹별 AJAX 호출 집계와 추이 대시보드.",
     "mxqlPaths": [],
     "tagCountCategories": [
       "rum_ajax_each_page"
     ],
-    "source": "templates/browser_ajax_stats.json"
+    "domainKnowledge": [
+      "rum_ajax_each_page TAGLOAD: 페이지별 AJAX 호출 통계 (6h raw / 3d{m5} / unlimit{h1} 계층)",
+      "그루핑: page_group 기준"
+    ],
+    "analysisGuides": [
+      {
+        "name": "AJAX 호출 추이/에러 분석",
+        "trigger": "AJAX|API|호출|에러율|4xx|5xx",
+        "instruction": "1단계: rum_ajax_each_page -> 페이지 그룹별 AJAX 호출 수 추이\n2단계: 4xx/5xx 카운트 비율 -> 에러율 높은 페이지 식별\n3단계: 호출 급증 시간대 식별 -> 자동 재시도/무한 루프 의심\n답변: [페이지별 AJAX 호출 Top] -> [에러율 높은 페이지] -> [개선 권장(재시도 정책/엔드포인트 점검)]"
+      },
+      {
+        "name": "페이지별 AJAX 부하 비교",
+        "trigger": "페이지.*AJAX|어느.*페이지|호출.*많",
+        "instruction": "1단계: rum_ajax_each_page -> page_group별 AJAX 호출 수 집계\n2단계: 페이지당 평균 호출 수 계산 -> 비정상적으로 많은 페이지 식별\n3단계: 호출 수가 많은 페이지의 AJAX 워터폴은 ajax_analytics 화면에서 후속 분석\n답변: [페이지별 AJAX 호출 Top] -> [페이지당 평균] -> [ajax_analytics 드릴다운 권장]"
+      },
+      {
+        "name": "시간대별 AJAX 패턴",
+        "trigger": "시간대|패턴|주기|급증|급감",
+        "instruction": "1단계: rum_ajax_each_page (raw 6h) -> 단기 패턴\n2단계: rum_ajax_each_page{m5} (3d) -> 중기 패턴\n3단계: rum_ajax_each_page{h1} -> 장기 추이\n4단계: 일/주 단위 주기성 식별 (피크 시간 등)\n답변: [시간대별 호출 추이] -> [피크 시간] -> [용량 산정 참고]"
+      }
+    ]
   },
   "flexboard": {
     "name": "Flex 보드",
-    "description": "사용자 커스텀 대시보드",
+    "description": "사용자가 위젯을 자유롭게 구성하는 커스텀 대시보드. 모든 RUM 카테고리 사용 가능.",
     "mxqlPaths": [],
-    "tagCountCategories": []
+    "tagCountCategories": [],
+    "domainKnowledge": [
+      "사용자가 직접 구성한 위젯 조합이므로 화면별 데이터 소스가 가변적",
+      "어떤 위젯이 있는지 파악 후 분석 진행 필요"
+    ],
+    "analysisGuides": [
+      {
+        "name": "대시보드 위젯 요약",
+        "trigger": "위젯|구성|보드|대시보드.*뭐",
+        "instruction": "1단계: 현재 보드의 위젯 목록과 데이터 소스(카테고리) 파악\n2단계: 위젯별로 어떤 지표를 표시하는지 설명\n3단계: 사용자가 특정 위젯에 대한 추가 분석을 원하면 해당 카테고리 기반으로 전용 가이드 안내\n답변: [위젯 목록 및 지표] -> [관련 화면 안내]"
+      }
+    ]
   },
   "rum_pageload_hitmap": {
     "name": "사용자 액션 히트맵",
-    "description": "페이지 로드 시간 분포를 히트맵으로 시각화",
+    "description": "사용자 페이지 로드 응답시간 분포를 산점도로 표시. 드래그로 sub-range 선택하여 트랜잭션 드릴다운.",
     "mxqlPaths": [],
-    "tagCountCategories": [
-      "hitmap_rum_pageload"
-    ],
-    "source": "fsd/browser/2_pages/RUMHitmapPage/",
+    "tagCountCategories": [],
     "yardApis": [
       {
         "type": "hitmap_rum_pageload",
-        "path": "/select",
-        "description": "페이지 로드 히트맵"
+        "path": "/yard/api/flush",
+        "description": "페이지 로드 히트맵 시계열"
+      }
+    ],
+    "domainKnowledge": [
+      "Yard API(hitmap_rum_pageload) 기반 - MXQL이 아닌 /yard/api/flush로 조회",
+      "히트맵 세로축: 응답시간(로드 시간), 가로축: 시간대. 위로 분포되면 느린 페이지 다수",
+      "드래그로 sub-range 선택 -> 해당 구간 트랜잭션 드릴다운 (browser_page_load_trace 팝아웃)"
+    ],
+    "analysisGuides": [
+      {
+        "name": "이상치 페이지 로드 탐지",
+        "trigger": "이상치|outlier|히트맵|느린.*페이지|분포",
+        "instruction": "1단계: Yard hitmap_rum_pageload(/yard/api/flush) -> 시간대별 응답시간 분포\n2단계: 히트맵 상단(느린 응답)에 점이 몰린 시간대/페이지 식별\n3단계: 해당 sub-range 드래그 -> browser_page_load_trace 팝아웃에서 개별 트랜잭션 상세 확인\n4단계: 트랜잭션의 단계별 시간 분해(TTFB/FCP/LCP) 분석\n답변: [이상 시간대] -> [영향 페이지/사용자] -> [트랜잭션 드릴다운 결과]"
       },
       {
-        "type": "hitmap_rum_pageload",
-        "path": "/profiles",
-        "description": "페이지 로드 프로파일 목록"
+        "name": "특정 시간대 분포 비교",
+        "trigger": "비교|시간대|평소|증가|개선",
+        "instruction": "1단계: 평소 시간대(베이스라인) hitmap_rum_pageload 조회\n2단계: 비교 대상 시간대(피크/문제 시점) hitmap_rum_pageload 조회\n3단계: 두 분포의 중앙값/p95/이상치 비율 비교\n4단계: 차이가 큰 응답시간 구간 식별\n답변: [평소 vs 비교 시간대 분포] -> [악화/개선 영역] -> [원인 추정]"
+      },
+      {
+        "name": "에러 트랜잭션 필터 분석",
+        "trigger": "에러.*트랜잭션|실패.*페이지|실패.*로드",
+        "instruction": "1단계: hitmap_rum_pageload에서 에러 필터 적용 -> 실패 트랜잭션만 표시\n2단계: 실패 트랜잭션의 시간대/페이지 분포\n3단계: browser_page_load_trace 팝아웃으로 실패 원인(에러 메시지) 확인\n답변: [실패 트랜잭션 분포] -> [영향 페이지] -> [원인(에러 메시지/스택)]"
       }
     ]
   },
   "ajax_analytics": {
     "name": "AJAX 히트맵",
-    "description": "AJAX 호출 응답시간 분포 히트맵",
+    "description": "AJAX 응답시간 히트맵과 개별 트랜잭션 상세. 네트워크 워터폴(DNS/connect/SSL/firstByte/download) 분석.",
     "mxqlPaths": [],
     "tagCountCategories": [],
-    "note": "HitmapAnalyticsTemplate01 기반",
-    "source": "fsd/browser/2_pages/AjaxAnalytics/",
     "yardApis": [
       {
         "type": "hitmap_rum",
-        "path": "/select",
-        "description": "AJAX 히트맵"
+        "path": "/series",
+        "description": "AJAX 히트맵 시계열 데이터"
       },
       {
         "type": "hitmap_rum",
-        "path": "/profiles",
-        "description": "AJAX 프로파일 목록"
+        "path": "/profilerum",
+        "description": "개별 AJAX 트랜잭션 프로파일 상세"
+      }
+    ],
+    "domainKnowledge": [
+      "getAjaxHitmap, getAjaxTransaction이 hitmap_rum 타입으로 호출 (5_entities/browser-ajax/builder)",
+      "네트워크 워터폴: DNS -> TCP Connect -> SSL -> firstByte(서버) -> download",
+      "3rd-party 분류: 자사 도메인 vs 외부(광고/분석/CDN)",
+      "히트맵 드래그로 sub-range 선택 -> 해당 구간 AJAX 트랜잭션 드릴다운"
+    ],
+    "analysisGuides": [
+      {
+        "name": "느린 API 탐지",
+        "trigger": "느린.*API|AJAX.*느|API.*지연|slow.*api",
+        "instruction": "1단계: Yard hitmap_rum(/series) -> 시간대별 elapsed 분포\n2단계: 상위 elapsed 포인트 드래그 -> profilerum 상세 조회\n3단계: 단계별 분해 (dns/connect/ssl/firstByte/download) 병목 식별\n4단계: 3rd-party 분류 -> 외부 서비스면 대체/제거 검토\n답변: [Top 10 느린 API] -> [자사 vs 외부] -> [병목 단계별 조치]"
+      },
+      {
+        "name": "네트워크 워터폴 분석",
+        "trigger": "워터폴|DNS|connect|SSL|firstByte|단계|분해",
+        "instruction": "1단계: profilerum 상세에서 워터폴 시각화 확인\n2단계: 단계별 시간 측정 - DNS / TCP Connect / SSL Handshake / firstByte(TTFB) / Download\n3단계: 비정상 단계 식별:\n- DNS > 100ms -> DNS 캐시/공급자 점검\n- SSL > 200ms -> 인증서/HTTP/2 도입\n- TTFB > 1s -> 서버 처리 지연\n- Download가 큼 -> 응답 크기/네트워크 대역폭\n답변: [단계별 시간표] -> [병목 단계] -> [대응 방안]"
+      },
+      {
+        "name": "3rd-party API 식별",
+        "trigger": "3rd|외부|타사|host|도메인",
+        "instruction": "1단계: hitmap_rum(/series)에서 host별 그룹핑\n2단계: 자사 도메인 vs 외부 도메인 분류\n3단계: 외부 호스트 elapsed Top -> 외부 서비스 의존도 측정\n4단계: 영향 큰 외부 서비스에 대한 timeout/fallback 정책 권장\n답변: [외부 호스트 Top] -> [의존도] -> [신뢰성 개선 권장]"
       }
     ]
   },
   "browser_error_tracking": {
     "name": "에러 추적",
-    "description": "브라우저 에러 추적 및 이력",
+    "description": "JS 에러 실시간 로그 뷰어. 소스맵 기반으로 난독화된 스택트레이스를 원본 파일/라인으로 매핑.",
     "mxqlPaths": [],
     "tagCountCategories": [],
-    "note": "LogExplorer 기반, 로그 카테고리 사용 (#BrowserError)"
+    "domainKnowledge": [
+      "로그 인프라 기반 - 집계 통계가 아닌 개별 에러 이벤트 로그 뷰어",
+      "소스맵 자동 해석 - 난독화된 스택트레이스를 원본 파일:라인으로 변환",
+      "주요 필드: errorType, message, stack, filename, lineNumber, columnNumber",
+      "컨텍스트: browser, browserVersion, os, device, url, userAgent, sessionId",
+      "세션 리플레이 연동: sessionId로 에러 발생 시점 사용자 행동 재생"
+    ],
+    "analysisGuides": [
+      {
+        "name": "에러 원인 디버깅",
+        "trigger": "디버그|원인|스택|소스맵|어디서.*에러",
+        "instruction": "1단계: 에러 로그에서 errorType + message로 동일 패턴 그룹핑\n2단계: 소스맵 매핑된 filename:lineNumber 확인 -> 원본 코드 위치 식별\n3단계: 발생 환경(browser/os/device) 분포 -> 특정 환경 한정 여부\n4단계: sessionId로 세션 리플레이 연동 -> 에러 직전 사용자 행동 추적\n답변: [에러 위치(파일:라인)] -> [재현 환경] -> [사용자 행동 시퀀스] -> [수정 제안]"
+      },
+      {
+        "name": "신규 에러 식별",
+        "trigger": "신규|새로운|처음|처음.*보|배포",
+        "instruction": "1단계: 최근 시간대(예: 1시간) 발생한 에러 추출\n2단계: 더 긴 기간(예: 7일)의 에러 hash와 비교 -> 신규 에러 식별\n3단계: 신규 에러의 발생 시점이 최근 배포와 일치하는지 확인\n답변: [신규 에러 목록] -> [발생 시점] -> [최근 배포와 연관성]"
+      },
+      {
+        "name": "환경별 에러 분포",
+        "trigger": "환경|브라우저|OS|버전|호환",
+        "instruction": "1단계: 에러 로그에서 browser/browserVersion/os/osVersion/device 분포 집계\n2단계: 특정 브라우저/OS만 에러 발생하는 패턴 식별\n3단계: 호환성 이슈 의심 시 폴리필/트랜스파일 권장\n답변: [환경별 에러 비율] -> [편향 환경] -> [호환성 대응 권장]"
+      }
+    ]
   },
   "user_session_event_search": {
     "name": "사용자 세션 로그 검색",
-    "description": "사용자 세션별 이벤트 검색",
+    "description": "사용자 세션의 이벤트 타임라인(클릭/입력/라우트 변경/에러) 검색. 세션 리플레이 연동.",
     "mxqlPaths": [],
     "tagCountCategories": [],
-    "note": "LogMonitoring 기반, 로그 카테고리 사용 (#PerformanceEvent, #UserEvent, #Network 등)"
+    "domainKnowledge": [
+      "세션 리플레이: DOM 스냅샷 + 사용자 이벤트(클릭/스크롤/입력) 재생",
+      "rapid-click 탐지: 짧은 시간 내 반복 클릭 -> UX 불만 신호",
+      "세션 이벤트 필터: sessionId로 개별 세션 타임라인 복원",
+      "이벤트 타입: pageview, routeChange, click, customEvent, error"
+    ],
+    "analysisGuides": [
+      {
+        "name": "사용자 경험 진단",
+        "trigger": "UX|사용자.*경험|행동|rapid.*click|rage.*click|불만",
+        "instruction": "1단계: 세션 이벤트에서 rapid-click/dead-click 필터\n2단계: 발생 URL/엘리먼트 집계\n3단계: 해당 세션의 에러 발생 여부 대조 (error_statistics 연동)\n답변: [반복 클릭 Top 페이지] -> [UX 불만 원인] -> [개선 권장]"
+      },
+      {
+        "name": "특정 세션 행동 추적",
+        "trigger": "세션|sessionId|특정.*세션|리플레이",
+        "instruction": "1단계: sessionId로 검색하여 해당 세션의 이벤트 타임라인 조회\n2단계: pageview -> routeChange -> click -> error 순서 정리\n3단계: 사용자가 어디서 막혔는지 / 어떤 액션 후 에러가 발생했는지 식별\n답변: [세션 타임라인] -> [이상 행동 시점] -> [세션 리플레이 재생 권장]"
+      },
+      {
+        "name": "이탈 패턴 분석",
+        "trigger": "이탈|중단|포기|conversion|전환|leave",
+        "instruction": "1단계: pageview 이벤트 -> 사용자가 마지막으로 본 페이지 집계\n2단계: 특정 페이지 후 routeChange 없이 종료된 세션 비율\n3단계: 해당 페이지에서 에러/rapid-click 발생 여부 대조\n답변: [이탈 페이지 Top] -> [이탈 직전 행동] -> [전환율 개선 가설]"
+      }
+    ]
   },
   "counter": {
     "name": "메트릭스 차트",
-    "description": "사용자 정의 메트릭 차트",
+    "description": "사용자 정의 메트릭 카운터 차트 생성. 모든 RUM 카테고리/메트릭 사용 가능.",
     "mxqlPaths": [],
-    "tagCountCategories": []
+    "tagCountCategories": [],
+    "domainKnowledge": [
+      "사용자가 임의 카테고리/필드 조합으로 차트 생성",
+      "카테고리/메트릭이 가변적이므로 분석 시 현재 차트의 데이터 소스 파악 필수"
+    ],
+    "analysisGuides": [
+      {
+        "name": "메트릭 차트 해석",
+        "trigger": "차트|지표|메트릭|뭐.*보여",
+        "instruction": "1단계: 현재 차트가 사용 중인 카테고리/필드 식별\n2단계: 시계열 패턴 분석(증가/감소/주기성)\n3단계: 이상 구간 식별 후 관련 카테고리 가이드(에러/페이지로드/AJAX 등)로 연결\n답변: [차트 데이터 요약] -> [패턴/이상치] -> [관련 화면 안내]"
+      },
+      {
+        "name": "임계값/알람 설정 권장",
+        "trigger": "임계|알람|알림|기준값|threshold",
+        "instruction": "1단계: 차트 메트릭의 평소 범위 측정 (p50/p95)\n2단계: 비정상 임계값 제안 (예: p95의 2배)\n3단계: 이벤트 설정 메뉴(/event/rules)에서 임계값 등록 권장\n답변: [메트릭 평소 범위] -> [임계값 제안] -> [이벤트 룰 설정 안내]"
+      }
+    ]
   },
   "page_load_statistics": {
     "name": "페이지 로드 통계",
-    "description": "페이지 그룹/브라우저/OS/디바이스/IP별 로드 통계",
+    "description": "페이지 URL 그룹/브라우저/OS/디바이스별 로드 성능 퍼센타일 통계. p50/p75/p95 기반 SLA 추적.",
     "mxqlPaths": [],
-    "tagCountCategories": [
-      "db3_stat_gen_rum_page_load_group_stats",
-      "db3_stat_gen_rum_page_load_browser_stats",
-      "db3_stat_gen_rum_page_load_os_stats",
-      "db3_stat_gen_rum_page_load_device_stats",
-      "db3_stat_gen_rum_page_load_ip_stats"
+    "tagCountCategories": [],
+    "domainKnowledge": [
+      "FLEXLOAD 카테고리(tagCount 아님): db3_stat_gen_rum_page_load_group_stats, db3_stat_gen_rum_page_load_browser_stats, db3_stat_gen_rum_page_load_os_stats, db3_stat_gen_rum_page_load_device_stats",
+      "각 카테고리는 그루핑 차원별 분리: group(URL 그룹), browser, os, device",
+      "퍼센타일 전용 MQL 분리: getPageLoadGroupStatsPercentileMql 등",
+      "주요 지표: loadTime, domContentLoaded, firstByte(TTFB), firstPaint(FP), firstContentfulPaint(FCP), largestContentfulPaint(LCP), inp, cls",
+      "퍼센타일: p50(중앙값), p75(CWV 평가 기준), p90/p95(이상치)",
+      "loadTime 분해: DNS -> TCP Connect -> SSL -> TTFB(서버 응답) -> DOM 처리 -> 렌더링"
     ],
-    "source": "fsd/browser/5_entities/page-load/mql/categories.ts"
+    "analysisGuides": [
+      {
+        "name": "느린 페이지 분석",
+        "trigger": "느린|slow|지연|loadTime|페이지.*느",
+        "instruction": "1단계: db3_stat_gen_rum_page_load_group_stats FLEXLOAD -> pageGroup별 p75 loadTime 내림차순\n2단계: 단계별 시간 분해 (TTFB / FCP / LCP)\n3단계: TTFB > 1.8s -> 서버 / FCP > 3s -> 리소스 / LCP > 4s -> 이미지/텍스트 렌더링\n4단계: db3_stat_gen_rum_page_load_device_stats FLEXLOAD -> 특정 디바이스 이슈 여부\n답변: [Top 10 느린 페이지] -> [단계별 병목] -> [개선 권장]"
+      },
+      {
+        "name": "Core Web Vitals 진단",
+        "trigger": "CWV|core.*web|LCP|FID|INP|CLS|SEO",
+        "instruction": "1단계: db3_stat_gen_rum_page_load_group_stats FLEXLOAD -> LCP/INP/CLS의 p75 조회 (Google 평가 기준은 p75)\n2단계: @data:core_web_vitals_thresholds로 각 지표 분류 (Good/Needs Improvement/Poor)\n3단계: db3_stat_gen_rum_page_load_device_stats로 모바일/데스크톱 분리 (모바일이 더 엄격)\n답변 형식:\n| 지표 | p75 | 기준 | 상태 | 악화 페이지 |\n[섹션1] 전체 상태 [섹션2] 악화 페이지 [섹션3] 원인 추정 - LCP(이미지/서버), INP(JS 메인스레드), CLS(광고/폰트)"
+      },
+      {
+        "name": "환경별(브라우저/OS) 성능 비교",
+        "trigger": "브라우저|OS|호환|Safari|Chrome|Firefox|버전",
+        "instruction": "1단계: db3_stat_gen_rum_page_load_browser_stats FLEXLOAD -> 브라우저별 p75\n2단계: db3_stat_gen_rum_page_load_os_stats FLEXLOAD -> OS별 p75\n3단계: 특정 브라우저/OS만 느린 패턴 식별 (예: Safari INP 이상치)\n4단계: 환경별 사용자 비중과 결합하여 영향도 산정\n답변: [브라우저별 표] -> [OS별 표] -> [편향 환경의 영향도] -> [최적화 우선순위]"
+      },
+      {
+        "name": "퍼센타일 분포 심층 분석",
+        "trigger": "퍼센타일|percentile|p50|p95|p99|분포|이상치",
+        "instruction": "1단계: getPageLoadGroupStatsPercentileMql -> p50/p75/p90/p95/p99 조회\n2단계: p50 vs p95 차이 -> 분포의 꼬리 길이 측정 (격차 크면 이상치 다수)\n3단계: p99가 비정상적으로 크면 -> 극소수 사용자에게만 발생하는 심각한 지연\n답변: [퍼센타일 분포표] -> [꼬리 길이] -> [이상치 사용자 추적 필요 여부]"
+      }
+    ]
   },
   "ip_statistics": {
     "name": "IP 통계",
-    "description": "IP별 접속 통계",
+    "description": "클라이언트 IP/국가/도시별 페이지 로드 성능 분포. 지역별 지연 이슈 탐지.",
     "mxqlPaths": [],
-    "tagCountCategories": [
-      "db3_stat_gen_rum_page_load_ip_stats"
+    "tagCountCategories": [],
+    "domainKnowledge": [
+      "FLEXLOAD 카테고리(tagCount 아님): db3_stat_gen_rum_page_load_ip_stats",
+      "GeoIP 기반 국가/도시 매핑 - CDN/리전 최적화 근거",
+      "IP별 p75 loadTime -> 특정 지역 네트워크 지연 식별"
     ],
-    "source": "fsd/browser/2_pages/IpStatisticsPage/"
+    "analysisGuides": [
+      {
+        "name": "지역별 성능 진단",
+        "trigger": "지역|국가|도시|CDN|리전|해외",
+        "instruction": "1단계: db3_stat_gen_rum_page_load_ip_stats FLEXLOAD -> 국가별 p75 loadTime\n2단계: 자국 vs 해외 사용자 비교 -> 해외가 현저히 느리면 CDN 미적용 의심\n3단계: 도시/IP 단위 드릴다운 -> 특정 ISP/네트워크 이슈 식별\n답변: [국가별 성능 표] -> [지연 큰 지역] -> [CDN 도입/리전 추가 권장]"
+      },
+      {
+        "name": "이상 IP/봇 탐지",
+        "trigger": "봇|bot|이상|어뷰징|크롤러|비정상.*IP",
+        "instruction": "1단계: db3_stat_gen_rum_page_load_ip_stats FLEXLOAD -> IP별 PV/세션 수\n2단계: 단일 IP에서 비정상적으로 많은 PV/세션 발생 -> 봇/크롤러 의심\n3단계: 특정 IP의 페이지 패턴 분석 (반복 동일 페이지 = 봇 가능성)\n답변: [의심 IP 목록] -> [PV 패턴] -> [차단/필터 권장]"
+      },
+      {
+        "name": "주요 트래픽 도시 식별",
+        "trigger": "도시|city|상위|메인|주요.*트래픽",
+        "instruction": "1단계: db3_stat_gen_rum_page_load_ip_stats FLEXLOAD -> 도시별 PV Top N\n2단계: 도시별 평균 loadTime 비교\n3단계: 트래픽 큰 도시 중 성능이 나쁜 곳 우선 순위 식별\n답변: [도시별 PV/성능 표] -> [성능 개선 우선 도시]"
+      }
+    ]
+  },
+  "user_id_statistics": {
+    "name": "사용자 ID 통계",
+    "description": "userId별 페이지 로드 성능과 세션 통계. 특정 사용자 경험 분석에 활용.",
+    "mxqlPaths": [],
+    "tagCountCategories": [],
+    "domainKnowledge": [
+      "FLEXLOAD 카테고리(tagCount 아님): db3_stat_gen_rum_page_load_ip_stats (userId 필드 그루핑으로 재사용)",
+      "userId: RUM SDK 커스텀 사용자 식별자 (로그인 ID 등)",
+      "VIP 고객/특정 사용자 CS 대응 시 세션/에러 추적에 활용"
+    ],
+    "analysisGuides": [
+      {
+        "name": "특정 사용자 경험 추적",
+        "trigger": "사용자|VIP|개별|특정.*고객|CS|불만",
+        "instruction": "1단계: 사용자 ID로 db3_stat_gen_rum_page_load_ip_stats 조회 -> 해당 userId의 페이지 로드 패턴\n2단계: 평균 loadTime, 발생 에러 카운트 확인\n3단계: 전체 사용자 평균과 비교 -> 해당 사용자만 느린지 vs 전반 이슈인지 판단\n4단계: 필요 시 user_session_event_search로 세션 리플레이 연결\n답변: [사용자 사용 페이지 통계] -> [전체 대비 특이점] -> [세션 리플레이 권장 시점]"
+      },
+      {
+        "name": "활성 사용자 Top N",
+        "trigger": "활성|active|가장.*많이|헤비.*유저|heavy",
+        "instruction": "1단계: db3_stat_gen_rum_page_load_ip_stats FLEXLOAD -> userId별 PV/세션 수 Top N\n2단계: 활성 사용자의 주요 사용 페이지 식별\n3단계: 해당 사용자들의 평균 성능 -> 전체 평균과 비교\n답변: [Top 활성 사용자 표] -> [주요 사용 페이지] -> [헤비 유저 경험 품질]"
+      },
+      {
+        "name": "사용자 그룹 비교",
+        "trigger": "그룹|비교|등급|tier|cohort",
+        "instruction": "1단계: userId별 PV 수로 사용자 그룹 분리 (예: heavy/medium/light)\n2단계: 그룹별 평균 loadTime, 에러 발생률 비교\n3단계: 헤비 유저가 더 나쁜 경험을 하는지(다수 페이지 사용으로 누적 영향) 식별\n답변: [그룹별 성능 표] -> [편차] -> [VIP 대응 우선순위]"
+      }
+    ]
   },
   "resource_statistics": {
     "name": "리소스 통계",
-    "description": "리소스별 로딩 통계",
+    "description": "정적 리소스(JS/CSS/이미지/폰트) 및 API의 로딩 성능 통계. 3rd-party 도메인 분류.",
     "mxqlPaths": [],
-    "tagCountCategories": [
-      "db3_stat_gen_rum_resource_stats"
+    "tagCountCategories": [],
+    "domainKnowledge": [
+      "FLEXLOAD 카테고리(tagCount 아님): db3_stat_gen_rum_resource_stats",
+      "주요 필드: elapsed, size(bytes), type(script/css/img/font/xhr), host, status, method",
+      "단계 분해: dns/connect/ssl/firstByte/download",
+      "3rd-party 탐지: 자사 도메인 외 리소스 별도 분류",
+      "리소스 타입별 최적화: 이미지(WebP/AVIF), JS(code splitting), CSS(critical CSS), 폰트(display: swap)"
     ],
-    "source": "fsd/browser/5_entities/resource/mql/categories.ts"
+    "analysisGuides": [
+      {
+        "name": "3rd-party 부하 분석",
+        "trigger": "3rd|외부|광고|추적|타사|third|분석.*도구",
+        "instruction": "1단계: db3_stat_gen_rum_resource_stats FLEXLOAD -> host별 elapsed/size 집계\n2단계: 자사 도메인 vs 외부 도메인 분류 -> 외부 비중 측정\n3단계: 외부 호스트 Top N(광고/분석/CDN) -> 각 호스트 평균 elapsed\n4단계: 단계별 분해(dns/connect/ssl) -> 외부 DNS/SSL이 병목인지 식별\n답변: [외부 리소스 호스트 Top] -> [영향(elapsed/size)] -> [제거/지연 로딩/대체 권장]"
+      },
+      {
+        "name": "큰 리소스 식별",
+        "trigger": "크기|용량|이미지|JS.*크|번들",
+        "instruction": "1단계: db3_stat_gen_rum_resource_stats FLEXLOAD -> type별(img/script/css/font) size 분포\n2단계: size 큰 리소스 Top 10\n3단계: 타입별 최적화 권장: 이미지(WebP/AVIF/lazy), JS(code splitting/tree shaking), CSS(critical CSS), 폰트(display: swap, woff2)\n답변: [큰 리소스 Top 10] -> [타입별 최적화 권장]"
+      }
+    ]
   },
   "error_statistics": {
     "name": "브라우저 에러 통계",
-    "description": "브라우저 에러 유형별 통계",
-    "mxqlPaths": [],
-    "tagCountCategories": [
-      "db3_stat_gen_rum_error_stats"
-    ],
-    "source": "fsd/browser/5_entities/browser-error/mql/categories.ts"
-  },
-  "flexible_report": {
-    "name": "보고서",
-    "description": "일간/주간/월간 성능 보고서",
+    "description": "JS 에러를 hash_key로 중복 제거하여 집계한 통계. 동일 에러 유형별 영향도(affectedUsers/Sessions) 분석.",
     "mxqlPaths": [],
     "tagCountCategories": [],
-    "note": "독립 Report API 사용"
+    "domainKnowledge": [
+      "FLEXLOAD 카테고리(tagCount 아님): db3_stat_gen_rum_error_stats",
+      "hash_key: 에러 타입 + 메시지 + 스택 핵심부 해시 -> 동일 에러 식별자",
+      "주요 필드: errorCount, errorType, message, affectedSessions, affectedUsers",
+      "그루핑 차원: pageGroup, browser/version, os/version, device"
+    ],
+    "analysisGuides": [
+      {
+        "name": "주요 에러 Top 진단",
+        "trigger": "에러|error|JS.*에러|자바스크립트.*에러|버그",
+        "instruction": "1단계: db3_stat_gen_rum_error_stats FLEXLOAD -> errorCount 상위 Top 10\n2단계: affectedUsers -> 사용자 영향도 측정\n3단계: 브라우저/OS 분포 -> 특정 환경 한정 여부\n4단계: 첫 발생 시점/빈도 추이 -> 최근 배포 연관성\n답변: [Top 10 에러표(type/message/count/affected)] -> [환경별 분포] -> [배포 연관성 의심 항목]"
+      },
+      {
+        "name": "영향도 기반 우선순위",
+        "trigger": "영향도|우선순위|affected|많은.*사용자|중요",
+        "instruction": "1단계: db3_stat_gen_rum_error_stats FLEXLOAD -> affectedUsers/affectedSessions Top N\n2단계: errorCount는 적지만 affectedUsers가 많은 에러 -> 광범위 영향 (우선 처리)\n3단계: errorCount는 많지만 같은 사용자에게서만 발생 -> 단일 환경 이슈 (낮은 우선순위)\n답변: [영향 사용자 수 Top 표] -> [errorCount/affectedUsers 비율] -> [수정 우선순위]"
+      },
+      {
+        "name": "신규 vs 재발 에러 분류",
+        "trigger": "신규|새|재발|반복|배포|이전",
+        "instruction": "1단계: 최근 24시간의 hash_key 목록 추출\n2단계: 이전 7일의 hash_key와 비교 -> 신규(이전에 없던) vs 재발(이전에도 있던)\n3단계: 신규 에러는 최근 배포 영향, 재발 에러는 미해결 누적 이슈로 분류\n답변: [신규 에러 목록] -> [재발 에러 목록] -> [최근 배포와 연관성]"
+      },
+      {
+        "name": "페이지별 에러 분포",
+        "trigger": "페이지.*에러|어느.*페이지|page.*group",
+        "instruction": "1단계: db3_stat_gen_rum_error_stats FLEXLOAD -> pageGroup별 errorCount\n2단계: 페이지 PV 대비 에러율 계산\n3단계: 에러율 높은 페이지 식별 -> 해당 페이지는 browser_error_tracking에서 개별 디버깅\n답변: [페이지별 에러율 표] -> [악화 페이지] -> [browser_error_tracking 드릴다운 권장]"
+      }
+    ]
   }
 }

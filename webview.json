@@ -1,0 +1,401 @@
+{
+  "$product": "webview",
+  "$description": "WebView(하이브리드 앱) 화면 카탈로그 - WebViewRouter.tsx 라우트 + 사이드바 메뉴(대시보드/Flex 보드/분석/통계) 기반. 네이티브 앱 속 WebView는 브라우저 RUM과 모바일 네이티브 지표를 동시에 수집.",
+  "$urlPrefix": "/webview/",
+  "$maintainer": "TODO: WebView 담당자",
+  "webview_dashboard": {
+    "name": "웹뷰 대시보드",
+    "description": "하이브리드 앱 메인 대시보드 - 위젯 프리셋(WEBVIEW001~006 등) 기반으로 네이티브+웹뷰 통합 지표 표시.",
+    "mxqlPaths": [],
+    "tagCountCategories": [],
+    "domainKnowledge": [
+      "위젯 ID 체계(WEBVIEW001~006 등) - Dashboard 컴포넌트의 프리셋 기반 (WebViewMainDashboardPage)",
+      "WebView 환경 특성: 네이티브 앱(Android/iOS)이 제공하는 브라우저 컴포넌트",
+      "네이티브 SDK가 수집한 screen/ANR/crash + WebView JS SDK가 수집한 페이지 로드/AJAX 지표 통합"
+    ],
+    "analysisGuides": [
+      {
+        "name": "하이브리드 앱 현황",
+        "trigger": "상태|현황|요약|개요|전체",
+        "instruction": "1단계: 네이티브 지표(mobile_screen_loading, mobile_crash, android_anr_loading) 조회\n2단계: WebView 지표(rum_page_load_each_page, rum_error_total_each_page 등) 조회\n3단계: 두 영역 품질 비교 -> 네이티브 vs WebView 중 어디가 문제인지 식별\n답변: [네이티브 지표] -> [WebView 지표] -> [병목 영역] -> [분리 드릴다운 권장]"
+      },
+      {
+        "name": "네이티브 vs WebView 성능 비교",
+        "trigger": "네이티브|webview|하이브리드|비교",
+        "instruction": "1단계: mobile_screen_loading으로 네이티브 화면 로드 시간\n2단계: rum_page_load_each_page로 WebView 페이지 로드 시간\n3단계: 같은 플로우의 네이티브/WebView 전환 구간 식별\n4단계: WebView가 현저히 느리면 -> JS 번들/리소스 최적화 또는 네이티브로 대체 검토\n답변: [영역별 성능] -> [전환 구간 지연] -> [개선 권장]"
+      }
+    ]
+  },
+  "browser_live_stats": {
+    "name": "브라우저 모니터링 대시보드",
+    "description": "WebView 내 페이지뷰/세션/페이지 로드/AJAX/에러/Core Web Vitals/지역별 사용자를 통합 표시. Browser 제품과 공유 Flex 템플릿.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "rum_ajax_each_page",
+      "rum_ajax_hitmap",
+      "rum_country_region_each_page",
+      "rum_error_each_page",
+      "rum_page_load_browser_each_page",
+      "rum_page_load_each_page",
+      "rum_session_count",
+      "rum_web_vitals_each_page"
+    ],
+    "dataRegistry": {
+      "core_web_vitals_thresholds": {
+        "description": "Google Core Web Vitals 기준값 (2024). Good/Needs Improvement/Poor 3단계, p75 기준 평가",
+        "data": {
+          "LCP": { "good": "<=2500ms", "needs_improvement": "2500-4000ms", "poor": ">4000ms" },
+          "FID": { "good": "<=100ms", "needs_improvement": "100-300ms", "poor": ">300ms" },
+          "INP": { "good": "<=200ms", "needs_improvement": "200-500ms", "poor": ">500ms" },
+          "CLS": { "good": "<=0.1", "needs_improvement": "0.1-0.25", "poor": ">0.25" },
+          "FCP": { "good": "<=1800ms", "needs_improvement": "1800-3000ms", "poor": ">3000ms" },
+          "TTFB": { "good": "<=800ms", "needs_improvement": "800-1800ms", "poor": ">1800ms" }
+        }
+      }
+    },
+    "domainKnowledge": [
+      "Browser 제품의 templateKey=browser_live_stats와 동일 - WebView에서도 공유 사용",
+      "WebView 환경 특수성: Android Chrome WebView / iOS WKWebView / 구형 UIWebView 분리 가능",
+      "위젯별 카테고리 매핑: rum_page_load_each_page(페이지 로드), rum_web_vitals_each_page(CWV), rum_ajax_each_page/hitmap(AJAX), rum_error_each_page(에러), rum_country_region_each_page(지역), rum_session_count(세션)",
+      "WebView 특성: 네이티브 앱 컨텍스트 내부라 User Agent가 'WebView' 문자열 포함"
+    ],
+    "analysisGuides": [
+      {
+        "name": "현황 요약",
+        "trigger": "상태|현황|요약|개요",
+        "instruction": "1단계: rum_page_load_each_page -> 페이지별 로드 count/time\n2단계: rum_session_count -> 활성 세션 수\n3단계: rum_error_each_page -> 에러 Top N\n4단계: rum_web_vitals_each_page -> LCP/INP/CLS\n5단계: @data:core_web_vitals_thresholds로 Good/Poor 분류\n답변: [PV/세션 수] -> [페이지 로드 Top] -> [에러 Top] -> [CWV 상태]"
+      },
+      {
+        "name": "WebView 엔진별 성능",
+        "trigger": "WebView|엔진|WKWebView|Chrome.*WebView|UIWebView",
+        "instruction": "1단계: rum_page_load_browser_each_page에서 UA 기반 WebView 엔진 분류\n2단계: Android Chrome WebView vs iOS WKWebView vs 구형 UIWebView 비교\n3단계: 특정 엔진에서만 느린 경우 -> 엔진별 최적화 필요 식별\n답변: [엔진별 성능 표] -> [편향 환경] -> [개선 권장]"
+      }
+    ]
+  },
+  "browser_error_stats": {
+    "name": "브라우저 에러",
+    "description": "WebView 내 JS 에러 발생 추이, 디바이스별 에러 분포, 페이지 로드 대조 대시보드.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "rum_error_total_each_page",
+      "rum_error_device_each_page",
+      "rum_page_load_each_page"
+    ],
+    "domainKnowledge": [
+      "Browser 제품의 templateKey=browser_error_stats와 공유",
+      "rum_error_total_each_page: 페이지별 에러 총합",
+      "rum_error_device_each_page: 디바이스(WebView 호스트 앱)별 분포",
+      "WebView 환경에서 네이티브 앱 크래시는 별도 crash_statistics 화면 참조"
+    ],
+    "analysisGuides": [
+      {
+        "name": "WebView JS 에러 분석",
+        "trigger": "에러|JS.*에러|웹뷰.*에러|자바스크립트|버그",
+        "instruction": "1단계: rum_error_total_each_page -> 페이지별 에러 카운트 Top N\n2단계: rum_error_device_each_page -> 호스트 앱/디바이스 분포\n3단계: 특정 디바이스 한정이면 -> WebView 엔진 호환성 이슈 의심\n답변: [에러 Top 페이지] -> [디바이스 분포] -> [원인 추정]"
+      }
+    ]
+  },
+  "flexboard": {
+    "name": "Flex 보드",
+    "description": "사용자가 위젯을 자유롭게 구성하는 커스텀 대시보드. 모든 WebView/Browser/Mobile 카테고리 사용 가능.",
+    "mxqlPaths": [],
+    "tagCountCategories": [],
+    "domainKnowledge": [
+      "사용자가 직접 구성한 위젯 조합이므로 화면별 데이터 소스가 가변적",
+      "WebView는 RUM+Mobile 카테고리를 모두 조합 가능"
+    ],
+    "analysisGuides": [
+      {
+        "name": "대시보드 위젯 요약",
+        "trigger": "위젯|구성|보드|대시보드.*뭐",
+        "instruction": "1단계: 현재 보드의 위젯 목록과 데이터 소스(카테고리) 파악\n2단계: 위젯별 지표 설명\n3단계: 추가 분석은 관련 화면으로 연결\n답변: [위젯 목록] -> [관련 화면 안내]"
+      }
+    ]
+  },
+  "rum_pageload_hitmap": {
+    "name": "사용자 액션 히트맵",
+    "description": "WebView 페이지 로드(사용자 액션) 응답시간 분포를 산점도로 표시. Yard API 기반.",
+    "mxqlPaths": [],
+    "tagCountCategories": [],
+    "yardApis": [
+      {
+        "type": "hitmap_rum_pageload",
+        "path": "/yard/api/flush",
+        "description": "페이지 로드 히트맵 시계열"
+      }
+    ],
+    "domainKnowledge": [
+      "Yard API(hitmap_rum_pageload) 기반 - MXQL이 아닌 /yard/api/flush로 조회",
+      "세로축: 응답시간, 가로축: 시간대",
+      "드래그로 sub-range 선택 -> 트랜잭션 드릴다운"
+    ],
+    "analysisGuides": [
+      {
+        "name": "느린 페이지 로드 탐지",
+        "trigger": "느린|지연|히트맵|outlier|이상치",
+        "instruction": "1단계: hitmap_rum_pageload -> 응답시간 분포\n2단계: 상단(느린 응답) 집중 구간 식별\n3단계: 드래그 sub-range -> 개별 트랜잭션 드릴다운\n4단계: TTFB/FCP/LCP 단계별 분해\n답변: [이상 구간] -> [영향 페이지] -> [드릴다운 결과]"
+      }
+    ]
+  },
+  "ajax_analytics": {
+    "name": "HTTP 분석",
+    "description": "WebView에서 발생한 HTTP 요청(AJAX/fetch) 히트맵과 개별 트랜잭션 상세. Yard API 기반.",
+    "mxqlPaths": [],
+    "tagCountCategories": [],
+    "yardApis": [
+      {
+        "type": "hitmap_rum",
+        "path": "/series",
+        "description": "AJAX 히트맵 시계열"
+      },
+      {
+        "type": "hitmap_rum",
+        "path": "/profilerum",
+        "description": "개별 AJAX 트랜잭션 프로파일"
+      }
+    ],
+    "domainKnowledge": [
+      "Yard API(hitmap_rum) 기반",
+      "네트워크 워터폴: DNS -> TCP Connect -> SSL -> firstByte -> download",
+      "WebView 특성: 네이티브 앱의 네트워크 스택 공유 (쿠키/인증 연동)",
+      "3rd-party 분류: 자사 도메인 vs 외부(광고/분석/CDN)"
+    ],
+    "analysisGuides": [
+      {
+        "name": "느린 API 탐지",
+        "trigger": "느린.*API|AJAX.*느|API.*지연|slow.*api",
+        "instruction": "1단계: hitmap_rum(/series) -> 시간대별 elapsed 분포\n2단계: 상위 elapsed 드래그 -> profilerum 상세\n3단계: 단계별 분해(dns/connect/ssl/firstByte/download)\n4단계: 3rd-party 분류\n답변: [Top 10 느린 API] -> [자사 vs 외부] -> [병목 단계별 조치]"
+      }
+    ]
+  },
+  "user_session_event_search": {
+    "name": "사용자 세션 로그 검색",
+    "description": "사용자 세션의 이벤트 타임라인(페이지뷰/클릭/라우트 변경/에러) 검색. LOG_READ 권한 필요.",
+    "mxqlPaths": [],
+    "tagCountCategories": [],
+    "domainKnowledge": [
+      "세션 리플레이: DOM 스냅샷 + 사용자 이벤트 재생",
+      "이벤트 타입: pageview, routeChange, click, customEvent, error",
+      "WebView는 네이티브 세션과 WebView 세션을 연결하는 brigde 이벤트도 기록 가능"
+    ],
+    "analysisGuides": [
+      {
+        "name": "사용자 경험 진단",
+        "trigger": "UX|사용자.*경험|행동|불만|rapid",
+        "instruction": "1단계: 세션 이벤트에서 rapid-click/dead-click 필터\n2단계: 발생 URL/엘리먼트 집계\n3단계: 에러/크래시 발생 여부 대조\n답변: [반복 클릭 Top] -> [UX 불만 원인] -> [개선 권장]"
+      }
+    ]
+  },
+  "counter": {
+    "name": "메트릭스 차트",
+    "description": "사용자 정의 메트릭 카운터 차트 생성. 모든 RUM/Mobile 카테고리 사용 가능.",
+    "mxqlPaths": [],
+    "tagCountCategories": [],
+    "domainKnowledge": [
+      "사용자가 임의 카테고리/필드 조합으로 차트 생성",
+      "WebView는 RUM(rum_*)과 Mobile(mobile_*/android_*) 양쪽 카테고리 조합 가능"
+    ],
+    "analysisGuides": [
+      {
+        "name": "메트릭 차트 해석",
+        "trigger": "차트|지표|메트릭|뭐.*보여",
+        "instruction": "1단계: 현재 차트 카테고리/필드 식별\n2단계: 시계열 패턴 분석\n3단계: 이상 구간 식별 후 관련 화면 연결\n답변: [차트 요약] -> [패턴/이상치] -> [관련 화면 안내]"
+      }
+    ]
+  },
+  "screen_load_statistics": {
+    "name": "화면 로드 통계",
+    "description": "네이티브 화면(Activity/ViewController)별 로드 성능 통계. 화면 이름/앱 버전 단위 집계.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "mobile_screen_loading"
+    ],
+    "domainKnowledge": [
+      "mobile_screen_loading TAGLOAD 카테고리",
+      "주요 태그: screen_name, app_version, os, os_version, device_model",
+      "주요 필드: load_time, render_time, startup_time (cold/warm)",
+      "WebView 기반 화면과 네이티브 화면을 모두 포함"
+    ],
+    "analysisGuides": [
+      {
+        "name": "느린 화면 분석",
+        "trigger": "느린|지연|화면|screen.*slow",
+        "instruction": "1단계: mobile_screen_loading -> screen_name별 p75 load_time\n2단계: Top 10 느린 화면\n3단계: device_model/os_version 그루핑\n4단계: WebView 기반 화면 여부 확인 (브라우저 통계와 대조)\n답변: [느린 화면 Top] -> [기기 분포] -> [WebView/네이티브 분류] -> [개선 권장]"
+      },
+      {
+        "name": "앱 버전별 화면 성능",
+        "trigger": "버전|version|비교|회귀",
+        "instruction": "1단계: app_version별 평균 load_time\n2단계: 최신 버전 회귀 감지\n3단계: 회귀 화면의 device_model 분포\n답변: [버전별 성능 표] -> [회귀 화면]"
+      }
+    ]
+  },
+  "page_load_statistics": {
+    "name": "페이지 로드 통계",
+    "description": "WebView 페이지 URL 그룹/브라우저/OS/디바이스별 로드 성능 퍼센타일 통계.",
+    "mxqlPaths": [],
+    "tagCountCategories": [],
+    "dataRegistry": {
+      "core_web_vitals_thresholds": {
+        "description": "Google Core Web Vitals 기준값",
+        "data": {
+          "LCP": { "good": "<=2500ms", "poor": ">4000ms" },
+          "INP": { "good": "<=200ms", "poor": ">500ms" },
+          "CLS": { "good": "<=0.1", "poor": ">0.25" }
+        }
+      }
+    },
+    "domainKnowledge": [
+      "FLEXLOAD 카테고리(tagCount 아님): db3_stat_gen_rum_page_load_group_stats, db3_stat_gen_rum_page_load_browser_stats, db3_stat_gen_rum_page_load_os_stats, db3_stat_gen_rum_page_load_device_stats",
+      "주요 지표: loadTime, FCP, LCP, INP, CLS, TTFB",
+      "퍼센타일: p50/p75(CWV 평가)/p95/p99"
+    ],
+    "analysisGuides": [
+      {
+        "name": "느린 페이지 분석",
+        "trigger": "느린|slow|지연|loadTime",
+        "instruction": "1단계: db3_stat_gen_rum_page_load_group_stats FLEXLOAD -> pageGroup별 p75 loadTime Top\n2단계: 단계별 분해 (TTFB/FCP/LCP)\n3단계: db3_stat_gen_rum_page_load_device_stats로 기기 이슈 식별\n답변: [Top 느린 페이지] -> [단계별 병목] -> [개선 권장]"
+      },
+      {
+        "name": "Core Web Vitals 진단",
+        "trigger": "CWV|LCP|INP|CLS|core.*web|SEO",
+        "instruction": "1단계: db3_stat_gen_rum_page_load_group_stats -> LCP/INP/CLS의 p75\n2단계: @data:core_web_vitals_thresholds로 분류\n3단계: 악화 페이지 Top\n답변: [3대 지표 상태] -> [악화 페이지] -> [원인]"
+      }
+    ]
+  },
+  "ip_statistics": {
+    "name": "IP 통계",
+    "description": "클라이언트 IP/국가/도시별 WebView 페이지 로드 성능 분포.",
+    "mxqlPaths": [],
+    "tagCountCategories": [],
+    "domainKnowledge": [
+      "FLEXLOAD 카테고리(tagCount 아님): db3_stat_gen_rum_page_load_ip_stats",
+      "GeoIP 기반 국가/도시 매핑",
+      "IP별 p75 loadTime -> 특정 지역 네트워크 지연 식별"
+    ],
+    "analysisGuides": [
+      {
+        "name": "지역별 성능 진단",
+        "trigger": "지역|국가|도시|CDN|해외",
+        "instruction": "1단계: db3_stat_gen_rum_page_load_ip_stats FLEXLOAD -> 국가별 p75\n2단계: 해외가 현저히 느리면 CDN 미적용 의심\n3단계: 도시 드릴다운\n답변: [국가별 성능] -> [지연 지역] -> [CDN 도입 권장]"
+      }
+    ]
+  },
+  "user_id_statistics": {
+    "name": "사용자 ID 통계",
+    "description": "userId별 WebView 페이지 로드 성능과 세션 통계. 특정 사용자 경험 분석.",
+    "mxqlPaths": [],
+    "tagCountCategories": [],
+    "domainKnowledge": [
+      "FLEXLOAD 카테고리(tagCount 아님): db3_stat_gen_rum_page_load_ip_stats (userId 필드 그루핑 재사용)",
+      "userId: RUM SDK 커스텀 사용자 식별자"
+    ],
+    "analysisGuides": [
+      {
+        "name": "특정 사용자 경험 추적",
+        "trigger": "사용자|VIP|특정|CS|불만",
+        "instruction": "1단계: userId별 페이지 로드 패턴 조회\n2단계: 평균 loadTime, 에러 카운트 확인\n3단계: 전체 평균과 비교\n답변: [사용자 통계] -> [전체 대비 특이점]"
+      }
+    ]
+  },
+  "resource_statistics": {
+    "name": "리소스 통계",
+    "description": "WebView 내 정적 리소스(JS/CSS/이미지/폰트) 및 API 로딩 성능 통계.",
+    "mxqlPaths": [],
+    "tagCountCategories": [],
+    "domainKnowledge": [
+      "FLEXLOAD 카테고리(tagCount 아님): db3_stat_gen_rum_resource_stats",
+      "주요 필드: elapsed, size(bytes), type, host, status, method",
+      "단계 분해: dns/connect/ssl/firstByte/download",
+      "WebView 특성: 네이티브 앱 캐시 공유 여부에 따라 성능 차이"
+    ],
+    "analysisGuides": [
+      {
+        "name": "3rd-party 부하 분석",
+        "trigger": "3rd|외부|광고|타사|third",
+        "instruction": "1단계: db3_stat_gen_rum_resource_stats -> host별 집계\n2단계: 자사 vs 외부 분류\n3단계: 외부 호스트 Top\n답변: [외부 리소스 Top] -> [영향] -> [최적화 권장]"
+      },
+      {
+        "name": "큰 리소스 식별",
+        "trigger": "크기|용량|이미지|JS.*크",
+        "instruction": "1단계: type별 size 분포\n2단계: size 큰 리소스 Top\n3단계: 타입별 최적화 권장\n답변: [큰 리소스 Top] -> [최적화 권장]"
+      }
+    ]
+  },
+  "error_statistics": {
+    "name": "브라우저 에러 통계",
+    "description": "WebView 내 JS 에러를 hash_key로 중복 제거하여 집계한 통계.",
+    "mxqlPaths": [],
+    "tagCountCategories": [],
+    "domainKnowledge": [
+      "FLEXLOAD 카테고리(tagCount 아님): db3_stat_gen_rum_error_stats",
+      "hash_key: 에러 타입 + 메시지 + 스택 핵심부 해시",
+      "주요 필드: errorCount, errorType, message, affectedSessions, affectedUsers"
+    ],
+    "analysisGuides": [
+      {
+        "name": "주요 에러 Top 진단",
+        "trigger": "에러|error|JS.*에러|자바스크립트|버그",
+        "instruction": "1단계: db3_stat_gen_rum_error_stats FLEXLOAD -> errorCount Top 10\n2단계: affectedUsers로 영향도 측정\n3단계: 브라우저/OS 분포\n4단계: 배포 연관성 검토\n답변: [Top 10 에러] -> [환경 분포] -> [우선순위]"
+      },
+      {
+        "name": "영향도 기반 우선순위",
+        "trigger": "영향도|우선순위|affected|중요",
+        "instruction": "1단계: affectedUsers/affectedSessions Top\n2단계: errorCount 대비 affectedUsers 비율 분석\n3단계: 광범위 영향 에러 우선 처리\n답변: [영향 Top 표] -> [수정 우선순위]"
+      }
+    ]
+  },
+  "crash_statistics": {
+    "name": "크래시 통계",
+    "description": "하이브리드 앱(네이티브 컨테이너)의 크래시 통계. iOS/Android 공통.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "mobile_crash"
+    ],
+    "domainKnowledge": [
+      "mobile_crash TAGLOAD 카테고리",
+      "iOS/Android 공통 - os 태그로 구분",
+      "주요 태그: exception_class, exception_message, app_version, os, os_version, device_model",
+      "Crash Free Rate: 99.5%+ 권장",
+      "WebView 특성: 네이티브 컨테이너가 크래시되면 WebView 세션도 종료됨"
+    ],
+    "analysisGuides": [
+      {
+        "name": "주요 크래시 Top 진단",
+        "trigger": "크래시|crash|예외|exception|비정상.*종료",
+        "instruction": "1단계: mobile_crash -> exception_class/message 그룹핑\n2단계: 카운트 Top 10\n3단계: app_version/os/device_model 분포\n4단계: WebView 관련 크래시인지 확인 (스택에 WebView/WKWebView 포함 여부)\n답변: [Top 10 크래시] -> [영향] -> [환경 분포] -> [WebView 연관성]"
+      },
+      {
+        "name": "Crash Free Rate 추이",
+        "trigger": "crash.*free|안정성|품질",
+        "instruction": "1단계: 기간별 크래시 세션/총 세션 비율 계산\n2단계: Crash Free Rate 시계열\n3단계: 99.5% 미만 시 문제\n4단계: 버전별 Rate 비교 -> 회귀 탐지\n답변: [Rate 추이] -> [기준 대비] -> [문제 버전]"
+      }
+    ]
+  },
+  "anr_statistics": {
+    "name": "ANR 통계",
+    "description": "Android 하이브리드 앱의 ANR(Application Not Responding) 통계. W_ANDROID 전용.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "android_anr_loading"
+    ],
+    "domainKnowledge": [
+      "android_anr_loading TAGLOAD 카테고리",
+      "W_ANDROID 기능 활성화된 프로젝트만 사용",
+      "ANR: Android 시스템이 5초+ UI 스레드 블로킹 감지 시 발생",
+      "WebView 특성: WebView 내 JS 실행이 메인 스레드를 블로킹하면 ANR 유발 가능",
+      "Google Play 기준: ANR 비율 0.47%+ 경고, 1.24%+ 스토어 노출 불이익"
+    ],
+    "analysisGuides": [
+      {
+        "name": "ANR Top 진단",
+        "trigger": "ANR|응답없음|hang|freeze",
+        "instruction": "1단계: android_anr_loading -> screen_name별 ANR Top N\n2단계: 전체 세션 대비 ANR 비율 계산 (0.47% 기준)\n3단계: device_model/os_version 분포\n4단계: WebView 로딩 중 ANR 식별 -> WebView JS 블로킹 의심\n답변: [Top ANR 화면] -> [비율] -> [환경 분포] -> [WebView 연관성]"
+      },
+      {
+        "name": "WebView ANR 원인 분석",
+        "trigger": "webview.*ANR|원인|메인.*스레드|블로킹",
+        "instruction": "1단계: ANR 상세 스택 확인 -> WebView 관련 호출 식별\n2단계: 메인 스레드에서 WebView JS 실행/대량 데이터 주고받기 여부\n3단계: JS Bridge 호출 패턴 분석\n답변: [WebView 블로킹 지점] -> [비동기 처리 권장/JS 최적화]"
+      }
+    ]
+  }
+}

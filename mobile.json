@@ -1,0 +1,260 @@
+{
+  "$product": "mobile",
+  "$description": "Mobile(RUM) 화면 카탈로그 - MobileRouter.tsx 라우트 + 사이드바 메뉴(대시보드/Flex 보드/분석/통계) 기반",
+  "$urlPrefix": "/mobile/",
+  "$maintainer": "고지훈",
+  "mobile_dashboard": {
+    "name": "모바일 대시보드",
+    "description": "모바일 네이티브 앱 모니터링 메인 대시보드 - 화면 로드/ANR/크래시/사용자 세션을 통합 표시.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "mobile_screen_loading",
+      "android_anr_loading",
+      "mobile_crash"
+    ],
+    "domainKnowledge": [
+      "Android/iOS 네이티브 앱 모니터링 - 브라우저 RUM과 카테고리 분리됨",
+      "mobile_screen_loading: 화면(Activity/ViewController) 로드 성능",
+      "android_anr_loading: Android ANR(Application Not Responding) 이벤트",
+      "mobile_crash: 앱 크래시 이벤트 (iOS/Android 공통)",
+      "ANR 임계: 5초 이상 UI 스레드 블로킹 시 Android 시스템이 ANR로 판정",
+      "Crash Free Rate: 크래시 없이 세션을 마친 사용자 비율 - 99.5%+ 권장",
+      "iOS는 ANR 미지원 (시스템에 개념 없음), Android만 지원"
+    ],
+    "analysisGuides": [
+      {
+        "name": "앱 안정성 현황",
+        "trigger": "상태|현황|요약|개요|안정성",
+        "instruction": "1단계: mobile_crash TAGLOAD -> 크래시 카운트 및 영향 사용자 수\n2단계: android_anr_loading TAGLOAD -> ANR 카운트 (Android 한정)\n3단계: mobile_screen_loading TAGLOAD -> 평균 화면 로드 시간\n4단계: Crash Free Rate 계산 (크래시 없는 세션 / 총 세션)\n답변: [크래시 수/영향] -> [ANR 수] -> [화면 로드 성능] -> [Crash Free Rate]"
+      },
+      {
+        "name": "앱 버전별 품질 비교",
+        "trigger": "버전|version|배포|릴리스|release",
+        "instruction": "1단계: mobile_crash에서 app_version 태그 그루핑\n2단계: 버전별 크래시율/ANR율 비교\n3단계: 최신 버전이 이전 버전보다 나쁘면 -> 신규 배포 회귀 의심\n답변: [버전별 품질 표] -> [회귀 의심 버전] -> [롤백/긴급 패치 권장]"
+      }
+    ]
+  },
+  "flexboard": {
+    "name": "Flex 보드",
+    "description": "사용자가 위젯을 자유롭게 구성하는 커스텀 대시보드. 모든 모바일 카테고리 사용 가능.",
+    "mxqlPaths": [],
+    "tagCountCategories": [],
+    "domainKnowledge": [
+      "사용자가 직접 구성한 위젯 조합이므로 화면별 데이터 소스가 가변적",
+      "어떤 위젯이 있는지 파악 후 분석 진행 필요"
+    ],
+    "analysisGuides": [
+      {
+        "name": "대시보드 위젯 요약",
+        "trigger": "위젯|구성|보드|대시보드.*뭐",
+        "instruction": "1단계: 현재 보드의 위젯 목록과 데이터 소스(카테고리) 파악\n2단계: 위젯별로 어떤 지표를 표시하는지 설명\n3단계: 추가 분석은 관련 화면으로 연결\n답변: [위젯 목록 및 지표] -> [관련 화면 안내]"
+      }
+    ]
+  },
+  "rum_useraction_hitmap": {
+    "name": "사용자 액션 히트맵",
+    "description": "모바일 화면 전환(사용자 액션) 응답시간 분포를 산점도로 표시.",
+    "mxqlPaths": [],
+    "tagCountCategories": [],
+    "yardApis": [
+      {
+        "type": "hitmap_rum_pageload",
+        "path": "/yard/api/flush",
+        "description": "사용자 액션 히트맵 시계열 (RUMHitmapPage type='useraction')"
+      }
+    ],
+    "domainKnowledge": [
+      "Yard API(hitmap_rum_pageload) 기반 - 모바일에서도 브라우저와 동일 API 공유",
+      "세로축: 화면 로드 시간, 가로축: 시간대",
+      "드래그로 sub-range 선택 -> 개별 액션 트레이스 드릴다운"
+    ],
+    "analysisGuides": [
+      {
+        "name": "느린 화면 전환 탐지",
+        "trigger": "느린|지연|히트맵|화면.*전환|outlier",
+        "instruction": "1단계: hitmap_rum_pageload(/yard/api/flush) -> 응답시간 분포\n2단계: 히트맵 상단(느린 응답) 집중 구간 식별\n3단계: 해당 시간대 드래그 -> 개별 트랜잭션 상세\n답변: [이상 구간] -> [영향 화면/사용자] -> [드릴다운 결과]"
+      },
+      {
+        "name": "시간대별 패턴 비교",
+        "trigger": "비교|시간대|피크|평소|주기",
+        "instruction": "1단계: 평소 시간대 히트맵 조회\n2단계: 비교 시간대(피크) 히트맵 조회\n3단계: 분포 차이 분석\n답변: [시간대별 차이] -> [원인 추정]"
+      }
+    ]
+  },
+  "rum_http_hitmap": {
+    "name": "HTTP 분석",
+    "description": "모바일 앱의 HTTP 요청 히트맵과 개별 트랜잭션 상세. 네트워크 워터폴 분석.",
+    "mxqlPaths": [],
+    "tagCountCategories": [],
+    "yardApis": [
+      {
+        "type": "hitmap_rum",
+        "path": "/series",
+        "description": "HTTP 히트맵 시계열 (RUMHitmapPage type='http')"
+      },
+      {
+        "type": "hitmap_rum",
+        "path": "/profilerum",
+        "description": "개별 HTTP 트랜잭션 프로파일"
+      }
+    ],
+    "domainKnowledge": [
+      "Yard API(hitmap_rum) 기반 - 브라우저 AJAX 분석과 동일 API 공유",
+      "네트워크 워터폴: DNS -> TCP Connect -> SSL -> firstByte -> download",
+      "모바일 환경 특성: 3G/4G/5G/WiFi 네트워크 편차가 성능에 큰 영향",
+      "3rd-party 분류: 자사 도메인 vs 외부(광고/분석 SDK/CDN)"
+    ],
+    "analysisGuides": [
+      {
+        "name": "느린 API 탐지",
+        "trigger": "느린.*API|HTTP.*느|API.*지연|slow.*api",
+        "instruction": "1단계: Yard hitmap_rum(/series) -> 시간대별 elapsed 분포\n2단계: 상위 elapsed 드래그 -> profilerum 상세\n3단계: 단계별 분해(dns/connect/ssl/firstByte/download) 병목 식별\n4단계: 3rd-party 분류 -> 외부 의존성 검토\n답변: [Top 10 느린 API] -> [자사 vs 외부] -> [병목 단계별 조치]"
+      },
+      {
+        "name": "네트워크 워터폴 분석",
+        "trigger": "워터폴|DNS|connect|SSL|firstByte|단계|분해",
+        "instruction": "1단계: profilerum에서 워터폴 확인\n2단계: 단계별 시간 측정 (DNS/TCP Connect/SSL/TTFB/Download)\n3단계: 모바일 네트워크 특성 고려 (3G는 TCP Connect가 길고, WiFi는 DNS가 더 영향)\n답변: [단계별 시간표] -> [병목 단계] -> [대응 방안(HTTP2, 커넥션 재사용, DNS 프리페치)]"
+      }
+    ]
+  },
+  "user_session_event_search": {
+    "name": "사용자 세션 로그 검색",
+    "description": "사용자 세션의 이벤트 타임라인(화면 전환/탭/입력/에러) 검색. LOG_READ 권한 필요.",
+    "mxqlPaths": [],
+    "tagCountCategories": [],
+    "domainKnowledge": [
+      "세션 리플레이: 사용자 이벤트(탭/스와이프/입력) 재생",
+      "이벤트 타입: screen_view, action, custom_event, error, anr, crash",
+      "sessionId로 개별 세션 타임라인 복원 가능",
+      "모바일은 deviceId/userId로 사용자 식별"
+    ],
+    "analysisGuides": [
+      {
+        "name": "크래시 직전 행동 추적",
+        "trigger": "크래시|직전|원인|세션|재현",
+        "instruction": "1단계: mobile_crash에서 크래시 sessionId 추출\n2단계: user_session_event_search에서 해당 세션 타임라인 조회\n3단계: 크래시 직전 screen_view/action 확인\n답변: [크래시 세션 타임라인] -> [직전 행동] -> [재현 시나리오]"
+      },
+      {
+        "name": "UX 불만 신호 탐지",
+        "trigger": "UX|rapid.*tap|rage|반복|불만",
+        "instruction": "1단계: 세션 이벤트에서 짧은 시간 내 반복 탭(rapid-tap) 필터\n2단계: 발생 화면 집계\n3단계: 해당 세션의 에러/ANR 발생 여부 대조\n답변: [반복 탭 Top 화면] -> [UX 불만 원인] -> [개선 권장]"
+      }
+    ]
+  },
+  "counter": {
+    "name": "메트릭스 차트",
+    "description": "사용자 정의 메트릭 카운터 차트 생성. 모든 모바일 카테고리/메트릭 사용 가능.",
+    "mxqlPaths": [],
+    "tagCountCategories": [],
+    "domainKnowledge": [
+      "사용자가 임의 카테고리/필드 조합으로 차트 생성",
+      "가변적이므로 현재 차트의 데이터 소스 파악 필수"
+    ],
+    "analysisGuides": [
+      {
+        "name": "메트릭 차트 해석",
+        "trigger": "차트|지표|메트릭|뭐.*보여",
+        "instruction": "1단계: 현재 차트 카테고리/필드 식별\n2단계: 시계열 패턴 분석(증가/감소/주기성)\n3단계: 이상 구간 식별 후 관련 화면으로 연결\n답변: [차트 데이터 요약] -> [패턴/이상치] -> [관련 화면 안내]"
+      }
+    ]
+  },
+  "screen_load_statistics": {
+    "name": "화면 로드 통계",
+    "description": "앱 화면(Activity/ViewController)별 로드 성능 통계. 화면 이름/앱 버전 단위 집계.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "mobile_screen_loading"
+    ],
+    "domainKnowledge": [
+      "mobile_screen_loading TAGLOAD 카테고리 - 5_entities/screen-load/mql",
+      "주요 태그: screen_name, app_version, page_name, os, os_version, device_model",
+      "주요 필드: load_time, render_time, startup_time (cold/warm)",
+      "Cold Start: 프로세스 없는 상태에서 시작 (느림)",
+      "Warm Start: 프로세스는 있으나 Activity 재생성",
+      "Hot Start: Activity 복귀 (가장 빠름)"
+    ],
+    "analysisGuides": [
+      {
+        "name": "느린 화면 분석",
+        "trigger": "느린|slow|지연|화면.*느|screen.*slow",
+        "instruction": "1단계: mobile_screen_loading TAGLOAD -> screen_name별 p75 load_time\n2단계: Top N 느린 화면 식별\n3단계: device_model/os_version 그루핑 -> 특정 기기 이슈 여부\n4단계: Cold/Warm/Hot start 분류\n답변: [Top 10 느린 화면] -> [기기/OS 분포] -> [시작 유형 분석] -> [개선 권장]"
+      },
+      {
+        "name": "앱 버전별 화면 성능 비교",
+        "trigger": "버전|version|릴리스|비교|회귀",
+        "instruction": "1단계: app_version별 평균 load_time 비교\n2단계: 최신 버전이 이전보다 느리면 회귀 의심\n3단계: 회귀 화면의 device_model 분포 -> 특정 기기 한정 여부\n답변: [버전별 성능 표] -> [회귀 화면] -> [원인 추정]"
+      },
+      {
+        "name": "Cold Start 최적화",
+        "trigger": "cold|startup|시작|런치|launch",
+        "instruction": "1단계: mobile_screen_loading에서 startup_time 필드 추출\n2단계: Cold Start 평균/p95 측정\n3단계: 2초+ 이면 최적화 필요 (Android Vitals 기준)\n답변: [Cold Start 분포] -> [기준 대비 상태] -> [최적화 포인트(초기화 지연/라이브러리 로드)]"
+      }
+    ]
+  },
+  "anr_statistics": {
+    "name": "ANR 통계",
+    "description": "Android ANR(Application Not Responding) 통계. iOS는 지원되지 않음.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "android_anr_loading"
+    ],
+    "domainKnowledge": [
+      "android_anr_loading TAGLOAD 카테고리 - 5_entities/anr/mql",
+      "ANR: Android 시스템이 5초+ UI 스레드 블로킹을 감지하면 발생",
+      "iOS 제외 - 플랫폼에 ANR 개념 없음 (대신 watchdog kill)",
+      "주요 태그: screen_name, app_version, device_model, os_version",
+      "ANR 원인: 동기 네트워크 호출, 큰 파일 I/O, 과도한 DB 쿼리, 무한 루프",
+      "Google Play 정책: ANR 비율 0.47% 초과 시 '나쁜 동작' 임계 / 1.24%+ 스토어 노출 불이익"
+    ],
+    "analysisGuides": [
+      {
+        "name": "ANR Top 진단",
+        "trigger": "ANR|비정상|응답없음|hang|freeze",
+        "instruction": "1단계: android_anr_loading TAGLOAD -> screen_name별 ANR 카운트 Top N\n2단계: 전체 세션 대비 ANR 비율 계산 (Google 기준 0.47% 초과 시 경고)\n3단계: device_model/os_version 분포 -> 특정 기기 집중 여부\n4단계: app_version별 추이 -> 신규 버전 회귀 확인\n답변: [Top 10 ANR 화면] -> [비율] -> [기기/OS/버전 분포] -> [메인 스레드 블로킹 포인트 검토]"
+      },
+      {
+        "name": "ANR 근본 원인 분석",
+        "trigger": "원인|근본|디버그|왜.*ANR|메인.*스레드",
+        "instruction": "1단계: ANR 상세에서 발생 스택/스레드 덤프 확인\n2단계: 메인 스레드에서 실행된 블로킹 작업 식별 (Network/DB/파일 I/O)\n3단계: 비동기 처리(Coroutine/AsyncTask) 미적용 지점 식별\n답변: [블로킹 작업 목록] -> [개선 방안(비동기 이동/WorkManager)]"
+      }
+    ]
+  },
+  "crash_statistics": {
+    "name": "크래시 통계",
+    "description": "앱 크래시(Android/iOS) 통계. 크래시 메시지/스택 기반 중복 제거 집계.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "mobile_crash"
+    ],
+    "domainKnowledge": [
+      "mobile_crash TAGLOAD 카테고리 - 5_entities/mobile-crash/mql",
+      "iOS/Android 공통 - 플랫폼별 태그(os=ios/android)로 구분",
+      "주요 태그: exception_class, exception_message, app_version, os, os_version, device_model",
+      "Crash Free Rate = 1 - (크래시 세션 / 총 세션). 99.5%+ 권장",
+      "Android: Java/Kotlin Exception, Native SIGSEGV 등",
+      "iOS: NSException, EXC_BAD_ACCESS 등"
+    ],
+    "analysisGuides": [
+      {
+        "name": "주요 크래시 Top 진단",
+        "trigger": "크래시|crash|예외|exception|비정상.*종료",
+        "instruction": "1단계: mobile_crash TAGLOAD -> exception_class/message 조합으로 그룹핑\n2단계: 크래시 카운트 Top 10 식별\n3단계: affected_users/sessions로 영향도 측정\n4단계: app_version/os/device_model 분포\n답변: [Top 10 크래시] -> [영향 사용자] -> [환경 분포] -> [수정 우선순위]"
+      },
+      {
+        "name": "Crash Free Rate 추이",
+        "trigger": "crash.*free|안정성|품질|지표|추이",
+        "instruction": "1단계: 기간별 총 세션 수 대비 크래시 발생 세션 수 비율 계산\n2단계: Crash Free Rate 시계열 추이\n3단계: 99.5% 미만이면 품질 이슈 (Apple/Google 권장 기준)\n4단계: 버전별 Rate 비교 -> 신규 버전 회귀 탐지\n답변: [Crash Free Rate 추이] -> [기준 대비 상태] -> [문제 버전]"
+      },
+      {
+        "name": "신규 vs 재발 크래시 분류",
+        "trigger": "신규|새로운|재발|반복|배포",
+        "instruction": "1단계: 최근 시간대의 exception_class+message hash 추출\n2단계: 이전 기간 hash와 비교 -> 신규/재발 분류\n3단계: 신규 크래시의 발생 시점이 배포 시점과 일치하는지 확인\n답변: [신규 크래시] -> [재발 크래시] -> [배포 연관성] -> [핫픽스 권장]"
+      },
+      {
+        "name": "기기/OS별 크래시 패턴",
+        "trigger": "기기|device|OS|iOS|android|호환",
+        "instruction": "1단계: mobile_crash에서 device_model/os_version 그루핑\n2단계: 특정 기기/OS에 집중된 크래시 식별\n3단계: 호환성 이슈(OS 버전별 API 차이, 특정 기기 버그) 의심\n답변: [기기별 크래시 분포] -> [편향 환경] -> [호환성 대응 권장]"
+      }
+    ]
+  }
+}

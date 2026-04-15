@@ -1,0 +1,185 @@
+{
+  "$product": "llm-observability",
+  "$description": "LLM Observability 화면 카탈로그 - LLMObservabilityRouter.tsx 라우트 기반",
+  "$urlPrefix": "/llm_observability/",
+  "$maintainer": "고지훈",
+  "dashboard": {
+    "name": "LLM 대시보드",
+    "description": "LLM 관측 커스텀 대시보드 - 토큰 사용량, 성능, 에러, 비용, 고급 기능 위젯을 에이전트/모델/프로바이더 필터로 조합.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "llm_token_usage",
+      "llm_perf_stat",
+      "llm_error_stat",
+      "llm_active_stat",
+      "llm_feature_stat",
+      "llm_api_status"
+    ],
+    "dataRegistry": {
+      "llm_cost_reference": {
+        "description": "LLM 모델별 1M 토큰당 평균 비용 (USD). 입력/출력 분리. 프로바이더 공식 가격표 기준 (2026 Q1)",
+        "data": {
+          "gpt-4o": { "input": "$2.50/1M", "output": "$10.00/1M" },
+          "gpt-4o-mini": { "input": "$0.15/1M", "output": "$0.60/1M" },
+          "gpt-4-turbo": { "input": "$10.00/1M", "output": "$30.00/1M" },
+          "gpt-3.5-turbo": { "input": "$0.50/1M", "output": "$1.50/1M" },
+          "claude-opus-4": { "input": "$15.00/1M", "output": "$75.00/1M" },
+          "claude-sonnet-4": { "input": "$3.00/1M", "output": "$15.00/1M" },
+          "claude-haiku-4": { "input": "$0.25/1M", "output": "$1.25/1M" },
+          "gemini-1.5-pro": { "input": "$1.25/1M", "output": "$5.00/1M" },
+          "gemini-1.5-flash": { "input": "$0.075/1M", "output": "$0.30/1M" }
+        }
+      }
+    },
+    "domainKnowledge": [
+      "LLM 관측 지표 4대 축: 토큰(input/output/cached/reasoning) -> 비용(input_cost/output_cost/total_cost) -> 성능(latency/TTFT/TPOT) -> 에러(api_error_count/error_rate)",
+      "TTFT = Time To First Token(첫 토큰 응답시간), TPOT = Time Per Output Token(출력 토큰당 시간) - 스트리밍 LLM 성능의 핵심 지표",
+      "cached_tokens: 프롬프트 캐시에 의해 재사용된 토큰 수. 프로바이더별 할인 적용으로 비용 절감에 결정적",
+      "에이전트 그루핑: oid(Object ID) / okind(Object Kind) / onode(Node) - APM 에이전트 식별 체계를 LLM SDK가 그대로 사용",
+      "프리셋 기반 위젯 레이아웃(flex/grid) - 사용자 저장 가능"
+    ],
+    "analysisGuides": [
+      {
+        "name": "LLM 현황 요약",
+        "trigger": "상태|현황|요약|개요",
+        "instruction": "1단계: llm_token_usage 조회 -> 총 토큰(input/output), 총 비용\n2단계: llm_perf_stat 조회 -> 평균 latency, p95 TTFT/TPOT\n3단계: llm_error_stat 조회 -> 에러율, 주요 에러 타입\n4단계: llm_active_stat 조회 -> 모델/프로바이더별 호출 분포\n답변 구성: [호출 수/토큰/비용 요약표] -> [성능 지표] -> [에러 현황] -> [주요 모델 Top 5]"
+      },
+      {
+        "name": "LLM 에러 진단",
+        "trigger": "에러|실패|error|장애|문제|fail",
+        "instruction": "1단계: llm_error_stat -> api_error_count, error_rate 확인. 프로바이더/모델별 에러 분포\n2단계: llm_api_status -> 4xx(클라이언트)/5xx(서버) 분류\n3단계: 에러 Top N 모델의 llm_feature_stat로 reasoning/tool use 여부 확인 (복잡 호출이 실패 가능성 높음)\n4단계: 해당 시간대의 prompt_log 샘플 안내\n답변: [에러율 추이] -> [Top 에러 모델/프로바이더] -> [HTTP status 분포] -> [원인 추정 + prompt_log 드릴다운 제안]"
+      }
+    ]
+  },
+  "analysis/token_trend": {
+    "name": "토큰 추이 분석",
+    "description": "에이전트/모델/프로바이더별 토큰 소비 추이와 TTFT/TPOT 성능 분포. 차트 드래그로 sub-range 드릴다운 지원.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "llm_token_usage",
+      "llm_perf_stat",
+      "llm_feature_stat"
+    ],
+    "domainKnowledge": [
+      "io_ratio = output_tokens / input_tokens - 생성량 비율. 1 미만이면 요약/분류 유스케이스, 5+이면 창작/생성 유스케이스",
+      "cache_hit_pct = cached_tokens / input_tokens - 높을수록 비용 절감 효과 큼. 30%+ 이상이면 양호",
+      "reasoning_tokens: o1/Claude thinking 등 추론 모델의 숨김 사고 토큰. 출력 토큰과 별도 과금되므로 비용 분석 시 필수",
+      "TTFT/TPOT 분포: 박스플롯(p50/p75/p95/p99)으로 모델별 응답 특성 파악",
+      "groupBy 토글: 전체 합산(merged) vs 모델별 개별(individual) 비교 가능",
+      "CSV 내보내기 지원 - 장기 비용 리포트 작성에 활용"
+    ],
+    "analysisGuides": [
+      {
+        "name": "토큰 비용 최적화",
+        "trigger": "비용|최적화|절감|토큰.*줄|cost|가격|낭비",
+        "instruction": "1단계: llm_token_usage 조회(7d) -> 모델별 total_tokens, total_cost Top N\n2단계: io_ratio 계산 -> 입력 대비 출력 비율 이상치(>10 또는 <0.1) 탐지\n3단계: llm_feature_stat로 cache_hit_pct 확인 -> 캐시 미사용 고비용 모델 식별\n4단계: @data:llm_cost_reference로 저렴한 대체 모델 추천 (예: gpt-4-turbo -> gpt-4o-mini 80% 절감)\n답변 형식:\n| 모델 | 프로바이더 | 7일 토큰 | 7일 비용 | I/O 비율 | 캐시율 | 분류 |\n[섹션1] 현황 - 위 테이블 + 총 비용\n[섹션2] 낭비 구간 - 캐시 미사용 고비용 호출 (프롬프트 캐싱 적용 권장)\n[섹션3] 모델 다운그레이드 기회 - 저복잡도 유스케이스를 mini/haiku로 전환 시 절감액\n[섹션4] 총 절감 기회 요약\n반드시 실제 모델명+수치+절감액 명시. 추상적 조언 금지."
+      },
+      {
+        "name": "LLM 응답 지연 분석",
+        "trigger": "느려|지연|latency|TTFT|TPOT|응답시간|성능",
+        "instruction": "1단계: llm_perf_stat -> 모델별 p95 TTFT, p95 TPOT 확인\n2단계: TTFT가 느린 모델 -> 프로바이더 서버/네트워크 이슈 의심\n3단계: TPOT가 느린 모델 -> 출력 토큰 수 많거나 reasoning 모델 특성\n4단계: llm_feature_stat에서 tool_use/vision 사용 여부 확인 -> 기능 사용이 TTFT를 늘림\n답변: [모델별 TTFT/TPOT 분포표] -> [지연 원인 분류] -> [스트리밍 도입/모델 변경 권장]"
+      },
+      {
+        "name": "토큰 사용 추이 요약",
+        "trigger": "추이|변화|증가|감소|트렌드|usage",
+        "instruction": "1단계: llm_token_usage 기간 조회(1d/7d/30d 선택)\n2단계: 시간대별 input/output 토큰 라인 차트\n3단계: 이상 급증 구간 탐지 -> 해당 구간 모델/에이전트 식별\n답변: [시간대별 토큰 합계 차트] -> [급증 구간 원인(에이전트/모델)] -> [평균 대비 증가율]"
+      }
+    ]
+  },
+  "analysis/cost_analysis": {
+    "name": "비용 분석",
+    "description": "기간 비교(직전 기간/전주) 기반 LLM 비용 드릴다운. 성능-비용 버블 차트, 캐시 절감 추이.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "llm_token_usage",
+      "llm_perf_stat",
+      "llm_feature_stat"
+    ],
+    "dataRegistry": {
+      "llm_cost_reference": {
+        "description": "LLM 모델별 1M 토큰당 평균 비용 (USD). 입력/출력 분리. 프로바이더 공식 가격표 기준 (2026 Q1)",
+        "data": {
+          "gpt-4o": { "input": "$2.50/1M", "output": "$10.00/1M" },
+          "gpt-4o-mini": { "input": "$0.15/1M", "output": "$0.60/1M" },
+          "gpt-4-turbo": { "input": "$10.00/1M", "output": "$30.00/1M" },
+          "gpt-3.5-turbo": { "input": "$0.50/1M", "output": "$1.50/1M" },
+          "claude-opus-4": { "input": "$15.00/1M", "output": "$75.00/1M" },
+          "claude-sonnet-4": { "input": "$3.00/1M", "output": "$15.00/1M" },
+          "claude-haiku-4": { "input": "$0.25/1M", "output": "$1.25/1M" },
+          "gemini-1.5-pro": { "input": "$1.25/1M", "output": "$5.00/1M" },
+          "gemini-1.5-flash": { "input": "$0.075/1M", "output": "$0.30/1M" }
+        }
+      }
+    },
+    "domainKnowledge": [
+      "cost_per_req = total_cost / call_count - 요청당 평균 비용. 이상치 모델 탐지에 유용",
+      "cost_change_pct: 직전 기간 대비 비용 변화율. 갑작스런 증가는 프롬프트 길이 증가/모델 변경 징후",
+      "cached_cost: 캐시로 절감된 비용. cache_hit_pct x input_cost에 근사",
+      "error_cost: 실패한 호출에서도 토큰이 과금됨 (특히 timeout 시). 에러율이 높으면 비용 낭비 크다",
+      "성능-비용 버블: X축 latency, Y축 cost_per_req, 크기 total_cost - 우상단 모델이 최우선 최적화 대상",
+      "기간 비교 모드: '이전 기간(같은 길이)' / '지난주(동요일)' 선택 가능 - 주간 트래픽 패턴 반영"
+    ],
+    "analysisGuides": [
+      {
+        "name": "비용 최적화",
+        "trigger": "최적화|비용|절감|낭비|효율|추천",
+        "instruction": "1단계: llm_token_usage(기간) + 비교 기간 조회 -> cost_change_pct Top N\n2단계: cost_per_req 이상치 탐지 -> 프롬프트 과다/비싼 모델 사용\n3단계: llm_feature_stat의 cache_hit_pct -> 낮은 모델은 프롬프트 캐싱 도입 권장\n4단계: @data:llm_cost_reference로 대체 모델 절감액 산출\n5단계: error_cost 비중 계산 -> 에러 비용 > 10%면 재시도 로직 개선 권장\n답변 형식:\n| 모델 | 프로바이더 | 총 비용 | 증감 | cost/req | 캐시율 | 에러비용 |\n[섹션1] 현황 - 총 비용 + 증감률\n[섹션2] 증가 요인 - 비용 증가 모델 Top 3와 원인\n[섹션3] 캐시 도입 기회 - cache_hit_pct 낮은 고비용 모델\n[섹션4] 모델 다운그레이드 - @data:llm_cost_reference 기준 절감 시뮬레이션\n[섹션5] 총 절감 요약 - 방법별 월 절감액 합산\n반드시 모델명+수치+절감액(USD) 명시."
+      },
+      {
+        "name": "비용 현황 요약",
+        "trigger": "상태|현황|요약|얼마|전체.*비용",
+        "instruction": "1단계: llm_token_usage 기간 조회 -> total_cost, input_cost, output_cost\n2단계: 모델별 비용 분포 -> 파이/바 차트\n3단계: 시간대별 비용 추이 -> 일일/주간 패턴\n4단계: 직전 기간 대비 증감률\n답변: [총 비용/증감] -> [Top 5 모델 비용 비중] -> [일일 비용 추이] -> [주요 증감 원인]"
+      },
+      {
+        "name": "성능-비용 트레이드오프",
+        "trigger": "성능.*비용|trade.*off|버블|품질|속도.*가격",
+        "instruction": "1단계: llm_perf_stat + llm_token_usage JOIN -> 모델별 avg_latency, cost_per_req\n2단계: 버블 차트 매핑 (X=latency, Y=cost/req, size=total_cost)\n3단계: 4분면 분류:\n- 좌하: 빠르고 저렴 (이상적)\n- 좌상: 빠르지만 비쌈 (gpt-4o, claude-opus)\n- 우하: 느리지만 저렴 (gpt-3.5, haiku)\n- 우상: 느리고 비쌈 (최우선 교체 대상)\n답변: [4분면 분류표] -> [우상단 모델 교체 후보] -> [저복잡도 트래픽 다운그레이드 추천]"
+      }
+    ]
+  },
+  "prompt_log": {
+    "name": "프롬프트 로그",
+    "description": "LLM 호출 원시 로그 뷰어 - 프롬프트 입/출력 메시지, 토큰, 비용, 에러를 트랜잭션/스텝 단위로 조회.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "#LlmCallLog"
+    ],
+    "toolRouting": [
+      {
+        "id": "prompt-log-category-note",
+        "description": "#LlmCallLog는 일반 MXQL TAGLOAD가 아닌 로그 인프라 카테고리. CATEGORY #LlmCallLog 사용",
+        "when": {
+          "toolCalled": "whatap_query_data",
+          "argMatches": { "query": "llm_prompt|prompt_log|LlmCallLog" }
+        },
+        "redirect": null
+      }
+    ],
+    "domainKnowledge": [
+      "#LlmCallLog은 openmx 카테고리가 아닌 로그 인프라(LogLayout/LogExplorerLeft) 기반. 필터/검색은 로그 쿼리 DSL 사용",
+      "llm_log_type: step_status(스텝 완료), tx_status(트랜잭션 완료), input_message(프롬프트), output_message(응답), error 등 이벤트 타입",
+      "트랜잭션/스텝 2단계 구조: @txid(트랜잭션 전체) > @step_id(개별 LLM 호출). 한 트랜잭션에 여러 LLM 호출 가능 (체인/에이전트 워크플로)",
+      "토큰/비용 필드는 `.n` 접미사: input_tokens.n, output_tokens.n, cost.n - 숫자 타입 명시",
+      "streaming 호출: ttft.n 존재. 비스트리밍은 latency.n만 존재",
+      "메시지 청킹: 긴 프롬프트/응답은 여러 chunk로 분할 저장 후 UI에서 재조립",
+      "tx/step merge 모드: 트랜잭션 단위로 합쳐보기 vs 개별 호출 나열 전환"
+    ],
+    "analysisGuides": [
+      {
+        "name": "실패 호출 디버깅",
+        "trigger": "실패|에러|error|디버그|왜.*실패",
+        "instruction": "1단계: #LlmCallLog에서 success=false 또는 error 필드 존재 필터\n2단계: 에러 타입별 그룹핑 (rate_limit, timeout, invalid_request 등)\n3단계: 각 실패 호출의 model, provider, input_message(앞부분), error.message 추출\n4단계: 동일 에러 패턴 탐지 -> 재현 조건 파악\n답변: [실패 호출 수 + 에러 타입 분포] -> [대표 실패 사례 3건(@txid, model, error)] -> [원인 추정 + 해결 방안]"
+      },
+      {
+        "name": "느린 호출 분석",
+        "trigger": "느린|slow|latency.*길|TTFT.*높",
+        "instruction": "1단계: latency.n 또는 ttft.n 상위 호출 조회\n2단계: 해당 호출의 model, input_tokens.n, output_tokens.n, operation_type 확인\n3단계: 입력/출력 토큰 대비 지연 패턴 분석\n- 입력^ + TTFT^ : 프롬프트 길이 문제\n- 출력^ + TPOT^ : 응답 생성량 문제\n- 둘 다 짧은데 느림: 프로바이더 서버 문제\n답변: [Top 10 느린 호출(@txid, model, latency)] -> [원인 분류] -> [최적화 방안]"
+      },
+      {
+        "name": "고비용 호출 Top N",
+        "trigger": "비싼|고비용|cost.*높|돈.*많",
+        "instruction": "1단계: cost.n 상위 호출 조회\n2단계: input_tokens.n / output_tokens.n / cached_tokens.n 분포 확인\n3단계: 캐시 미적용 반복 프롬프트 탐지 (동일 input_message 해시)\n답변: [Top 10 고비용 호출] -> [입력 비중/출력 비중] -> [캐싱 가능한 반복 프롬프트 식별]"
+      }
+    ]
+  }
+}
