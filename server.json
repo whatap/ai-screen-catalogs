@@ -2,39 +2,180 @@
   "$product": "server",
   "$description": "서버(인프라) 모니터링 화면 카탈로그 — 프론트 소스 체계적 검증 완료",
   "$urlPrefix": "/sms/",
-  "$maintainer": "TODO: 서버 담당자",
-  "$note": "Server 제품은 MXQL보다 전용 API(infra-server, inventory/v2, sm/v2)를 많이 사용. tagCountCategories는 MXQL Text로 직접 조회 가능한 것만 표시.",
+  "$maintainer": "박규태",
+  "$note": "Server 제품은 MXQL보다 전용 API(infra-server, inventory/v2, sm/v2)를 많이 사용. tagCountCategories는 MXQL Text로 직접 조회 가능한 것만 표시. restApis는 /yard/api를 경유하지 않는 직접 REST 호출(주로 noti API).",
   "dashboard/resource_board": {
     "name": "리소스보드",
-    "description": "서버 전체 CPU, 메모리, 디스크 사용률. CPU/디스크IO/메모리/프로세스 Top 5.",
+    "description": "서버 전체 CPU, 메모리, 디스크 사용률 현황. Top 5 차트(9개 지표 선택 가능)와 리소스맵, 프로세스 테이블 제공.",
     "mxqlPaths": [],
     "tagCountCategories": [
-      "agent_list"
+      "agent_list",
+      "server_base",
+      "server_cpu_core",
+      "server_extra_counter",
+      "server_network",
+      "server_disk",
+      "server_process",
+      "server_netstat"
     ],
-    "note": "flexquery(tagcount, flexquery path)로 agent_list 조회. Top 5 차트는 server_resource 템플릿.",
-    "source": "rest/tanstack-query/routes/project/server/resourceBoard/queries.ts + templates/server_resource.json"
+    "note": "infra /cache/last·/cache/lastall은 SM*Cache 조회(SM*Core의 dual-write로 server_base/_cpu_core/_extra_counter/_network/_disk 태그카운트에 mirror). /cache/last의 tcpv4_established|filedescriptors item은 server_netstat 직접 조회. /cache/process는 MXQL(ServerProcessService-get*MaxOrderTopList.mql)로 server_process 조회. /histories는 SMNutCore(태그카운트 mirror 없음). Top 5 차트는 Flex 보드의 server_resource_top100 템플릿 위젯 재사용.",
+    "yardApis": [
+      {
+        "type": "tagcount",
+        "path": "flexquery",
+        "description": "서버 목록 (mql: /v2/sys/dashboard/agent_list)"
+      },
+      {
+        "type": "infra",
+        "path": "/cache/last",
+        "description": "Top N 메트릭 데이터 (CPU, 메모리, 디스크I/O, IOPS, Inode, TCPv4, PPS, BPS, FD 중 선택)"
+      },
+      {
+        "type": "infra",
+        "path": "/cache/process",
+        "description": "프로세스 테이블 데이터 (CPU/메모리 기준)"
+      },
+      {
+        "type": "infra",
+        "path": "/histories",
+        "description": "CPU 히트맵 데이터"
+      }
+    ],
+    "restApis": [
+      {
+        "method": "POST",
+        "path": "/noti/api/active/event/oids/status",
+        "description": "서버별 이벤트 상태 및 eventId — yard API의 서버 상태를 덮어씌움"
+      }
+    ],
+    "domainKnowledge": [
+      "CPU 사용률이 90% 이상이면 서버 과부하 상태 — 프로세스 확인 필요",
+      "디스크 I/O %가 지속적으로 80% 이상이면 디스크 병목 — IOPS와 throughput 함께 확인",
+      "Top 5 차트로 문제 서버를 빠르게 식별. 지표 선택 가능: CPU, 메모리, 디스크 I/O, Disk IOPS, Disk Inode, TCPv4 Connections, 네트워크 PPS/BPS, File Descriptors",
+      "서버 상태 분류: Normal(정상), Warning(경고 이벤트), Fatal(위험 이벤트), Inactive(에이전트 미연결)",
+      "리소스맵 색상이 진할수록 사용률이 높음"
+    ],
+    "analysisGuides": [
+      {
+        "name": "CPU/메모리/디스크 이상 진단",
+        "trigger": "CPU|메모리|디스크|높|부족|과부하|느려|문제",
+        "instruction": "1단계: Top 5 차트에서 CPU/메모리/디스크IO 사용률 상위 서버 확인\n2단계: 해당 서버의 상세 페이지로 이동 → CPU(system/user/iowait), 메모리(used/cached/swap), 디스크(I/O%/IOPS) 분석\n3단계: 프로세스 목록에서 리소스 점유 상위 프로세스 식별\n답변: [이상 서버 목록 + 수치] → [원인(CPU steal/iowait, 메모리 부족, 디스크 병목)] → [조치 방안(프로세스 재시작, 스케일업, 디스크 정리)]"
+      },
+      {
+        "name": "서버 상태 요약",
+        "trigger": "상태|현황|요약|전체|몇대",
+        "instruction": "1단계: 프로젝트 요약에서 전체 서버 수, 상태별(Normal/Warning/Fatal/Inactive) 수 확인\n2단계: Fatal/Inactive 서버가 있으면 해당 서버명과 원인 확인\n3단계: 리소스맵에서 사용률이 높은 서버 식별\n답변: [전체 N대 중 정상 N대, 경고 N대, 장애 N대] → [장애 서버 상세] → [주의 필요 서버]"
+      },
+      {
+        "name": "에이전트 연결 문제",
+        "trigger": "에이전트|연결|Inactive|미연결|설치",
+        "instruction": "1단계: 프로젝트 요약에서 Inactive 상태 서버 수 확인\n2단계: 리소스맵에서 Inactive 서버 식별\n3단계: 서버 상세로 이동하여 에이전트 버전 및 마지막 데이터 수신 시각 확인\n답변: [미연결 서버 목록] → [마지막 연결 시각] → [에이전트 재시작/재설치 가이드]"
+      }
+    ]
   },
   "dashboard/multi_line": {
     "name": "리소스 이퀄라이저",
     "description": "여러 서버의 지표를 라인 차트로 비교",
     "mxqlPaths": [],
-    "tagCountCategories": [],
-    "note": "전용 InfraMultiLine API 사용"
+    "tagCountCategories": [
+      "server_base",
+      "server_cpu_core",
+      "server_extra_counter",
+      "server_network",
+      "server_disk"
+    ],
+    "note": "전용 InfraMultiLine API 사용. /cache/lastall은 SM*Cache 조회지만 동일 데이터가 SM*Core의 dual-write로 태그카운트에 저장됨.",
+    "yardApis": [
+      {
+        "type": "infra",
+        "path": "/cache/lastall",
+        "description": "서버별 메트릭 데이터 (cpu/memory/diskio/diskiops 중 선택)"
+      }
+    ]
   },
   "compoundEye": {
     "name": "컴파운드아이",
     "description": "여러 서버의 핵심 지표를 한눈에 비교",
     "mxqlPaths": [],
+    "tagCountCategories": [
+      "server_base",
+      "server_cpu_core",
+      "server_extra_counter",
+      "server_network",
+      "server_disk"
+    ],
+    "note": "전용 CompoundEye API 사용. /smex는 SM*Cache 조회지만 동일 데이터가 SM*Core의 dual-write로 태그카운트에 저장됨.",
+    "restApis": [
+      {
+        "method": "POST",
+        "path": "/noti/api/active/event/oids/status",
+        "description": "서버별 이벤트 상태 — yard API의 서버 상태를 덮어씌움"
+      }
+    ],
+    "yardApis": [
+      {
+        "type": "sm",
+        "path": "/smex",
+        "description": "서버 토폴로지 데이터 (/yard/api/v2/merge 경유, 멀티 프로젝트)"
+      },
+      {
+        "type": "sm",
+        "path": "/attrs",
+        "description": "컴파운드아이 트래픽 최대값 설정 저장"
+      }
+    ]
+  },
+  "resourcemap": {
+    "name": "리소스맵",
+    "description": "서버별 CPU, 메모리, 디스크 사용률을 색상 블록으로 시각화. 이상 서버를 한눈에 식별.",
+    "mxqlPaths": [],
     "tagCountCategories": [],
-    "note": "전용 CompoundEye API 사용"
+    "note": "ResourceBoard 내부 컴포넌트와 동일한 시각화를 단독 화면으로 제공. /histories·/cache/histories·/histories/selected 모두 NutMapSelector → SMNutCore/SMNutCache → SMNutDB(자체 파일 DB) 경유. 태그카운트 mirror 없음.",
+    "yardApis": [
+      {
+        "type": "infra",
+        "path": "/histories",
+        "description": "CPU 히트맵 데이터 (초기 로드)"
+      },
+      {
+        "type": "infra",
+        "path": "/cache/histories",
+        "description": "CPU 히트맵 데이터 (캐시 갱신)"
+      },
+      {
+        "type": "infra",
+        "path": "/histories/selected",
+        "description": "CPU 히트맵 데이터 (선택 범위)"
+      }
+    ]
   },
   "dashboard/server_inventory_map": {
     "name": "서버 인벤토리 맵",
-    "description": "서버 자산을 시각적으로 표시. 그룹별 성능 요약.",
+    "description": "서버 운영 상태, 자원 현황을 인벤토리에 기반한 그룹 단위로 확인하는 화면",
     "mxqlPaths": [],
-    "tagCountCategories": [],
-    "note": "infra-server API (dashboard-page/*) 사용",
-    "source": "rest/tanstack-query/routes/project/server/serverDashboard/api.ts",
+    "tagCountCategories": [
+      "agent_list",
+      "infra_cpu",
+      "infra_mem",
+      "infra_swap",
+      "infra_network",
+      "infra_disk_perf",
+      "infra_gpu",
+      "infra_filesystem"
+    ],
+    "note": "infra-server API (dashboard-page/*, group-detail-page/*) 사용. get-server-inventories-with-metric.mql이 agent_list(FLEXLOAD) + infra_cpu/mem/swap/network/disk_perf/gpu(TAGLOAD) 조회, file-systems-by-group-and-keys.mql이 infra_filesystem(TAGLOAD) 조회 + kv.load server_inventory/server_inventory_custom JOIN.",
+    "restApis": [
+      {
+        "method": "POST",
+        "path": "/noti/api/active/event/count",
+        "description": "그룹별 이벤트 수"
+      },
+      {
+        "method": "POST",
+        "path": "/noti/api/active/event/list",
+        "description": "그룹별 이벤트 목록"
+      }
+    ],
     "yardApis": [
       {
         "type": "infra-server",
@@ -44,7 +185,81 @@
       {
         "type": "infra-server",
         "path": "/dashboard-page/summary-info",
-        "description": "그룹 요약"
+        "description": "그룹 요약 (tabType: groupInfo2 또는 performanceInfo)"
+      },
+      {
+        "type": "infra-server",
+        "path": "/dashboard-page/server-group-list",
+        "description": "서버 그룹 목록"
+      },
+      {
+        "type": "infra-server",
+        "path": "/group-detail-page/info",
+        "description": "그룹 상세 정보"
+      },
+      {
+        "type": "infra-server",
+        "path": "/group-detail-page/chart-info",
+        "description": "그룹 차트 메타데이터"
+      },
+      {
+        "type": "infra-server",
+        "path": "/group-detail-page/charts/timed-data",
+        "description": "그룹 시계열 차트 데이터"
+      },
+      {
+        "type": "infra-server",
+        "path": "/group-detail-page/file-systems2",
+        "description": "그룹 파일시스템"
+      },
+      {
+        "type": "infra-server",
+        "path": "/inventory/filter-recommends",
+        "description": "필터 추천값"
+      },
+      {
+        "type": "inventory",
+        "path": "/column/list",
+        "description": "인벤토리 컬럼 메타데이터"
+      }
+    ],
+    "domainKnowledge": [
+      "단일 서버 기준으로 주요 자원 사용 추이와 현재 상태를 함께 확인",
+      "CPU, 메모리, 네트워크, 디스크를 시계열로 확인하여 병목 구간을 파악",
+      "프로세스별 CPU, 메모리, I/O, 개수 정보를 함께 확인하여 자원 점유 원인을 추적",
+      "전체 자원 사용률과 프로세스 사용률을 함께 보면 성능 이슈의 원인 후보를 좁히기 쉬움",
+      "CPU는 system, user, iowait, steal, irq, softirq, load 등을 함께 해석",
+      "메모리는 used 값뿐 아니라 available, cache, slab, swap, page fault를 함께 확인",
+      "네트워크는 traffic, packet, error, dropped를 함께 봐야 이상 징후 해석 가능",
+      "디스크는 사용률, I/O, IOPS, throughput, queue length, inode를 함께 확인",
+      "파일 시스템 탭을 통해 마운트포인트별 사용량과 inode 사용 현황을 확인",
+      "서버 정보 탭에서 OS, IP, 에이전트 버전 등 기본 인벤토리 정보를 함께 확인 가능"
+    ],
+    "analysisGuides": [
+      {
+        "name": "성능 저하 원인 분석",
+        "trigger": "느려|지연|성능|문제|병목|왜",
+        "instruction": "CPU, 메모리, 네트워크, 디스크 시계열을 먼저 확인합니다. 어떤 자원이 먼저 높아졌는지 보고, 우측 프로세스 목록에서 해당 시점에 점유율이 높은 프로세스를 확인합니다. 답변은 [문제가 된 자원] → [높은 수치] → [원인 프로세스 후보] → [점검 방향] 순서로 정리합니다."
+      },
+      {
+        "name": "CPU 과다 사용 분석",
+        "trigger": "CPU|load|iowait|steal|irq",
+        "instruction": "CPU Usage 상세에서 user, system, iowait, steal, irq, load를 함께 봅니다. user/system 비중이 높으면 프로세스 부하 가능성이 크고, iowait가 높으면 디스크 대기 가능성을 우선 봅니다. steal이 높으면 가상화 자원 경합 가능성을 의심합니다. 답변은 [CPU 패턴] → [의심 원인] → [관련 프로세스] 순서로 정리합니다."
+      },
+      {
+        "name": "메모리 부족 분석",
+        "trigger": "메모리|memory|swap|oom|page fault",
+        "instruction": "Memory Usage, Available, Swap, Page Fault를 함께 확인합니다. used가 높더라도 available이 유지되면 즉시 부족으로 단정하지 않습니다. available 감소와 swap 사용 증가가 함께 보이면 메모리 압박 가능성이 높습니다. 답변은 [메모리 상태] → [압박 여부] → [점유 프로세스] 순서로 정리합니다."
+      },
+      {
+        "name": "네트워크 이상 분석",
+        "trigger": "네트워크|traffic|packet|error|dropped",
+        "instruction": "Network 상세에서 traffic in/out, packet in/out, error, dropped를 함께 확인합니다. traffic만 높고 error/dropped가 없으면 정상 부하일 수 있습니다. error나 dropped가 증가하면 NIC 또는 네트워크 경로 문제 가능성을 함께 봅니다. 답변은 [트래픽 수준] → [오류 여부] → [이상 가능성] 순서로 정리합니다."
+      },
+      {
+        "name": "디스크 사용량 및 I/O 분석",
+        "trigger": "디스크|disk|iops|queue|inode|용량",
+        "instruction": "Disk I/O, IOPS, Bps, Queue Length와 Used Space, inode 사용률을 함께 확인합니다. 사용 공간이 높아도 I/O 병목은 아닐 수 있으며, 반대로 사용 공간이 낮아도 I/O 또는 queue가 높으면 성능 문제가 될 수 있습니다. 답변은 [용량 상태] → [I/O 상태] → [병목 여부] → [대상 파일시스템] 순서로 정리합니다."
       }
     ]
   },
@@ -56,38 +271,141 @@
   },
   "server_inventory": {
     "name": "서버 인벤토리",
-    "description": "서버 하드웨어/소프트웨어 자산 목록, 변경이력",
+    "description" : "On-Premise 및 Public Cloud 서버에 대한 구성 정보를 통합 조회하고 변경 이력을 추적하는 화면",
     "mxqlPaths": [],
     "tagCountCategories": [],
     "note": "inventory/v2 API (inventories/server/search, changes) 사용",
-    "source": "fsd/server/5_entities/inventory/api/inventoryQueryKeys.ts"
+    "yardApis": [
+      {
+        "type": "inventory",
+        "path": "/column/list",
+        "description": "인벤토리 컬럼 메타데이터"
+      },
+      {
+        "type": "inventory/v2",
+        "path": "/inventories/server/search",
+        "description": "인벤토리 스냅샷 검색"
+      },
+      {
+        "type": "inventory/v2",
+        "path": "/inventories/server/history",
+        "description": "단일 서버 인벤토리 이력"
+      },
+      {
+        "type": "inventory/v2",
+        "path": "/inventories/server/changes",
+        "description": "인벤토리 변경이력"
+      },
+      {
+        "type": "inventory/v2",
+        "path": "/inventories/server/changes-select-info",
+        "description": "변경이력 기간 옵션"
+      },
+      {
+        "type": "infra-server",
+        "path": "/fold-metric-ids",
+        "description": "폴드 메트릭 ID 목록"
+      }
+    ],
+    "domainKnowledge": [
+      "서버의 성능 수치보다 자산 및 구성 정보(인벤토리)를 확인",
+      "Alias Name과 Default Group은 물리적 특성이라기보다 운영 관리 편의를 위한 논리적 분류 정보이며 사용자 정의에 의해서 설정",
+      "Agent Version은 수집 기능과 인벤토리 정확도에 직접 영향을 줄 수 있다. 특정 컬럼이 비어 있거나 값 형식이 다른 경우, 실제 장비 차이뿐 아니라 Agent Version 차이로 인해 수집 가능 여부가 달라졌을 가능성도 고려해야 한다.",
+      "컬럼 설정을 통해서 사용자 정의 컬럼을 추가하고 정보를 입력 가능",
+      "각 컬럼은 수집 시점 기준의 스냅샷이므로, 최근 변경 여부 확인 시 변경 이력 조회 활용",
+      "inventory/v2 API 사용 — MXQL이 아닌 전용 API로 자산 데이터 조회",
+      "용량 계획 시 현재 서버 사양과 사용률을 함께 분석하면 증설 판단 가능"
+    ]
   },
   "server/list": {
     "name": "서버 목록",
-    "description": "전체 서버 목록과 상태, CPU/메모리 사용률",
+    "description": "전체 서버 목록과 주요 자원 지표를 조회하고 비교할 수 있는 화면",
     "mxqlPaths": [],
     "tagCountCategories": [
-      "agent_list"
+      "agent_list",
+      "server_base",
+      "server_cpu_core",
+      "server_extra_counter",
+      "server_network",
+      "server_disk"
     ],
-    "note": "sm/v2 API 사용 + FLEXLOAD agent_list",
-    "source": "fsd/server/2_pages/ServerListPage/ + rest/tanstack-query/routes/project/server/infraServerList/",
+    "note": "sm/v2 API는 AgentStatus + SM*Cache 조회지만 동일 데이터가 SM*Core의 dual-write로 태그카운트에 저장됨. compare는 장기 범위에서 cube 파일 사용(태그카운트 미러 없음).",
+    "restApis": [
+      {
+        "method": "POST",
+        "path": "/noti/api/active/event/oids/status",
+        "description": "서버별 이벤트 상태 및 eventId — yard API의 서버 상태를 덮어씌움"
+      }
+    ],
     "yardApis": [
       {
-        "type": "sm",
+        "type": "sm/v2",
         "path": "/sm",
         "description": "서버 목록"
+      },
+      {
+        "type": "sm/v2",
+        "path": "compare",
+        "description": "서버 비교 (최대 10대)"
       }
-    ]
+    ],
+    "domainKnowledge": [
+      "서버별 상태, 자원 사용률, 네트워크, IP, 인벤토리 정보를 한 화면에서 조회",
+      "컬럼 설정을 통해 운영 목적에 맞는 항목만 선택하여 확인 가능",
+      "Disk Used % (Max), Disk I/O % (Max), Network Traffic (Max)는 대표 최대값 기준으로 표시",
+      "표 목록은 빠른 이상 서버 탐색에 적합하고, 비교 기능은 여러 서버 간 차이 분석에 적합",
+      "같은 역할의 서버라도 CPU, 메모리, 디스크, 네트워크 패턴은 서로 다를 수 있음",
+      "평균 수준이 비슷해도 특정 서버만 최대값이 높으면 부하 집중 가능성 있음",
+      "비교 차트는 선택한 서버들과 선택한 컬럼 기준으로 시계열 차이를 확인할 때 유용",
+      "인벤토리 컬럼과 성능 컬럼을 함께 보면 사양 차이에 따른 사용률 차이 해석 가능",
+      "일시정지, 비활성, 위험 상태 서버를 함께 확인하여 운영 상태를 빠르게 분류 가능"
+    ],
+    "analysisGuides": [
+    {
+      "name": "이상 서버 빠른 탐색 후 상세 원인 확인",
+      "trigger": "이상|장애|위험|경고|느린|문제|확인",
+      "instruction": "상태 컬럼과 CPU, Memory, Disk Used, Disk I/O, Network Traffic 컬럼을 함께 확인합니다. 위험 또는 비정상 상태 서버와 자원 사용률이 높은 서버를 먼저 찾습니다. 이후 해당 서버를 선택해 서버 상세 화면으로 이동하여 CPU, 메모리, 네트워크, 디스크 시계열과 프로세스 점유율을 확인합니다. 답변은 [이상 서버 목록] → [높은 지표와 수치] → [서버 상세에서 확인된 원인 자원/프로세스] → [우선 조치 방향] 순서로 정리합니다."
+    },
+    {
+      "name": "서버 간 비교 후 원인 서버 상세 분석",
+      "trigger": "비교|차이|서버간|같은데|다른데|왜 다르",
+      "instruction": "비교할 서버를 선택한 뒤 비교 메뉴에서 CPU, 메모리, 디스크, 네트워크 차트를 함께 확인합니다. 같은 역할 서버인지, 사양 차이가 있는지, 특정 시점에 한 서버만 치솟는 패턴이 있는지 봅니다. 차이가 큰 서버는 서버 상세 화면으로 이동하여 자원별 상세 차트와 프로세스 목록을 확인합니다. 답변은 [비교 대상] → [차이가 큰 지표] → [상세 화면에서 확인된 원인] → [부하 집중 또는 설정 차이 해석] 순서로 정리합니다."
+    },
+    {
+      "name": "컬럼 기반 운영 점검 후 상세 점검 연계",
+      "trigger": "컬럼|목록|한눈에|운영현황|점검",
+      "instruction": "운영 목적에 맞게 컬럼을 구성합니다. 기본 점검은 상태, CPU Used %, Memory Used %, Disk Used % (Max), Disk I/O % (Max), Network Traffic (Max), Private IP를 우선 확인합니다. 필요 시 OS, OS 버전, 코어 수, 메모리 총량 등의 인벤토리 컬럼을 추가해 함께 해석합니다. 특정 서버의 수치가 높거나 비정상 상태이면 서버 상세로 이동해 자원 시계열과 프로세스 정보를 추가 확인합니다. 답변은 [추천 컬럼 구성] → [목록에서 확인된 이상 포인트] → [상세 화면에서 추가 확인할 항목] 순서로 정리합니다."
+    },
+    {
+      "name": "부하 편차 확인 후 원인 서버 조치 검토",
+      "trigger": "편차|불균형|쏠림|집중|한대만",
+      "instruction": "동일 그룹 또는 동일 역할 서버를 기준으로 표의 수치와 비교 차트를 함께 봅니다. 일부 서버만 CPU, 메모리, 네트워크, 디스크 수치가 높으면 부하 분산 불균형 가능성을 우선 의심합니다. 해당 서버를 서버 상세 화면에서 열어 자원별 추이와 프로세스 사용률을 확인하고, 실제로 어떤 프로세스나 작업이 집중되었는지 확인합니다. 답변은 [편차가 큰 서버] → [차이가 난 지표] → [상세 화면에서 확인된 원인] → [로드밸런싱, 작업 분산, 설정 조정 방향] 순서로 정리합니다."
+    }
+  ]
+
+    
   },
   "server_detail": {
     "name": "서버 상세",
-    "description": "특정 서버의 CPU, 메모리, 디스크, 네트워크, 프로세스 상세",
+    "description": "특정 서버의 CPU, 메모리, 네트워크, 디스크, 프로세스 사용 현황을 상세하게 분석하는 화면",
     "mxqlPaths": [],
     "tagCountCategories": [
-      "server_disk"
+      "server_base",
+      "server_cpu_core",
+      "server_extra_counter",
+      "server_network",
+      "server_disk",
+      "server_process",
+      "server_process_all"
     ],
-    "note": "sm/v2 API (oid/{oid}/historyex, cube) + MXQL Text(server_disk) 사용",
-    "source": "fsd/server/5_entities/serverDetail/api/serverDetailQueryKeys.ts",
+    "note": "sm/v2 /oid/{oid}·sm /historyex는 SM*Cache/SM*Core 경유지만 동일 데이터가 태그카운트에 dual-write됨. /cube·/cube/hour는 5m/1h 큐브(태그카운트 미러 없음, cube only). /proc/groupex2는 server_process(그룹)·server_process_all(raw), /proc/group/{groupId}는 cube only.",
+    "restApis": [
+      {
+        "method": "POST",
+        "path": "/noti/api/active/event/oids/status",
+        "description": "서버별 이벤트 상태 및 eventId — yard API의 서버 상태를 덮어씌움"
+      }
+    ],
     "yardApis": [
       {
         "type": "sm/v2",
@@ -95,27 +413,103 @@
         "description": "서버 상세 정보"
       },
       {
-        "type": "sm/v2",
+        "type": "sm",
         "path": "/oid/{oid}/historyex",
-        "description": "서버 시계열 데이터"
+        "description": "서버 시계열 데이터 (5초 간격)"
+      },
+      {
+        "type": "sm",
+        "path": "/oid/{oid}/cube",
+        "description": "서버 시계열 데이터 (5분 간격)"
+      },
+      {
+        "type": "sm",
+        "path": "/oid/{oid}/cube/hour",
+        "description": "서버 시계열 데이터 (1시간 간격)"
+      },
+      {
+        "type": "infra",
+        "path": "/server-list",
+        "description": "서버 에이전트 목록"
+      },
+      {
+        "type": "sm",
+        "path": "/oid/{oid}/proc/groupex2",
+        "description": "프로세스 목록 (실시간)"
+      },
+      {
+        "type": "sm",
+        "path": "/oid/{oid}/proc/group/{groupId}",
+        "description": "프로세스 상세 (모달)"
+      }
+    ],
+    "domainKnowledge": [
+      "4대 리소스 차트: CPU(system/user/idle/iowait/load), 메모리(used/buffers/cached/free/swap), 네트워크(traffic/packet/error), 디스크(I/O%/IOPS/throughput/used%)",
+      "프로세스 목록: CPU/메모리(RSS)/디스크 I/O 기준 정렬. 프로세스 그룹핑으로 동일 프로세스 합산 가능",
+      "CPU Load Average(1/5/15분): CPU 코어 수 대비 해석해야 함. 4코어 서버에서 load 4.0이면 100% 활용",
+      "메모리 available이 total의 10% 이하면 OOM 위험 — swap 사용량도 함께 확인",
+      "네트워크 error/dropped가 0이 아니면 NIC 또는 네트워크 설정 문제 가능성",
+      "파일시스템 탭에서 마운트포인트별 사용률과 inode 사용률 확인 가능"
+    ],
+    "analysisGuides": [
+      {
+        "name": "서버 성능 이슈 분석",
+        "trigger": "느려|성능|문제|이상|원인|왜",
+        "instruction": "1단계: CPU 차트 확인 → system/user/iowait 비율 분석. iowait 높으면 디스크 병목, steal 높으면 VM 리소스 경합\n2단계: 메모리 차트 확인 → available 10% 이하면 OOM 위험, swap 사용 증가 시 메모리 부족\n3단계: 디스크 차트 확인 → I/O% 80% 이상 지속 시 디스크 병목, IOPS/throughput 추이 확인\n4단계: 프로세스 목록 → CPU/메모리 상위 프로세스 식별\n답변: [병목 지점(CPU/메모리/디스크/네트워크)] → [원인 프로세스] → [조치 방안]"
+      },
+      {
+        "name": "디스크 용량 부족",
+        "trigger": "디스크|용량|꽉|부족|공간|inode",
+        "instruction": "1단계: 파일시스템 탭에서 마운트포인트별 사용률(%) 확인\n2단계: inode 사용률 확인 — 파일 수가 많으면 용량 여유 있어도 inode 부족 가능\n3단계: 디스크 차트에서 사용률 증가 추이 확인\n답변: [위험 마운트포인트 + 사용률] → [증가 속도 예측] → [정리 대상(로그, 임시파일 등)]"
+      }
+    ]
+  },
+  "process_list": {
+    "name": "프로세스 목록",
+    "description": "서버별 프로세스 CPU, 메모리(RSS), 디스크 I/O 사용량. 프로세스 그룹핑 지원.",
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "server_process",
+      "server_process_all"
+    ],
+    "note": "sm/v2 API 사용. /proc/groupex2는 SMProcCache/SMProcGroupCache 경유지만 SMProcessCore가 server_process(그룹)·server_process_all(raw) 태그카운트에 dual-write.",
+    "yardApis": [
+      {
+        "type": "sm",
+        "path": "/oid/{oid}/proc/groupex2",
+        "description": "프로세스 목록 (실시간, CPU/메모리/디스크IO 기준)"
       }
     ]
   },
   "gpu_inventory": {
     "name": "GPU 인벤토리",
-    "description": "서버에 장착된 GPU 목록과 스펙, 변경이력",
-    "mxqlPaths": [],
-    "tagCountCategories": [],
-    "note": "inventory/v2 API (inventories/gpu/search, changes) 사용",
-    "source": "fsd/server/5_entities/gpuInventory/api/"
+    "description": "GPU 인벤토리 화면으로, 서버에 장착된 GPU 및 MIG 인스턴스의 자산 정보를 한 화면에서 조회할 수 있습니다. 서버 정보와 함께 GPU 모델, 표준화 모델군, GPU Index, UUID, Serial, GPU Type, 메모리 용량, 전력 제한, PCI Bus ID 등의 식별·구성 정보를 제공하며, 변경 이력 조회를 통해 GPU 구성 변화도 확인할 수 있습니다.",
+    "mxqlPaths": [
+      {
+        "type": "text",
+        "description": "GPU 인벤토리 메인 데이터 (4개 테이블 JOIN)",
+        "mql": "kv.load gpu_inventory\nJOIN {pk: [pk0], query: gpu_inv_custom}\nJOIN {pk: [oid], query: server_inventory}\nJOIN {pk: [oid], query: agent_active_status}\nsub server_inventory\n  kv.load server_inventory\n  SELECT [oid, ipAddress, OSVersion]\nend\nsub agent_active_status\n  CATEGORY agent_list\n  FLEXLOAD\n  SELECT [oid, active]\nend\nsub gpu_inv_custom\n  kv.load gpu_inventory_custom\nend"
+      },
+      {
+        "type": "text",
+        "description": "GPU 커스텀 컬럼 데이터",
+        "mql": "TIME-RANGE {recent: 1d}\nkv.load gpu_inventory_custom"
+      }
+    ],
+    "tagCountCategories": [
+      "agent_list"
+    ],
+    "note": "MXQL text 쿼리로 gpu_inventory + gpu_inventory_custom + server_inventory + agent_list JOIN 조회. agent_list는 sub 쿼리 내 FLEXLOAD로 사용."
   },
   "gpu_performance": {
     "name": "GPU 성능요약",
-    "description": "서버 GPU 사용률, 온도, 전력 모니터링",
+    "description": "GPU별 주요 성능 지표를 조회하고 비교할 수 있는 화면",
     "mxqlPaths": [],
-    "tagCountCategories": [],
-    "note": "infra-gpu API (performance/summary) + series/v4 사용",
-    "source": "fsd/server/5_entities/gpu/api/gpuApi.ts",
+    "tagCountCategories": [
+      "infra_gpu_id",
+      "infra_gpu_process"
+    ],
+    "note": "infra-gpu API (performance/summary) + series/v4 사용. GpuDashboardService가 infra_gpu_id(최신/5m) + infra_gpu_process(GPU별 프로세스 메트릭, 5m)를 unfold로 조회. series/v4 /fold-tagc/infra_gpu_id는 infra_gpu_id 카테고리 fold 조회. 인벤토리는 kv:gpu_inventory.",
     "yardApis": [
       {
         "type": "infra-gpu",
@@ -127,6 +521,37 @@
         "path": "/fold-tagc/infra_gpu_id",
         "description": "GPU 비교 메트릭"
       }
+    ],
+    "domainKnowledge": [
+      "GPU 상태, HostName, Model, GPU Type, GPU Index, Process Info와 주요 성능 지표를 한 화면에서 조회",
+      "컬럼 설정을 통해 운영 목적에 맞는 GPU 성능 항목을 추가하여 확인 가능",
+      "Physical GPU와 MIG 인스턴스를 함께 조회하며, GPU Type과 GPU Index로 구분 가능",
+      "Process Info를 통해 어떤 프로세스가 GPU를 점유하고 있는지 함께 확인 가능",
+      "GPU Utilization, FB Memory Usage, Temperature, Power, ECC 등 지표를 함께 보면 GPU 사용 상태를 종합적으로 해석 가능",
+      "일부 GPU를 선택하면 선택 대상만 하단 라인차트로 비교 가능",
+      "단일 시점 수치만으로 판단하기보다 시계열 변화와 여러 지표를 함께 보는 것이 중요"
+    ],
+    "analysisGuides": [
+    {
+      "name": "GPU 이상 사용 탐색",
+      "trigger": "GPU|사용률|메모리|온도|전력|이상|문제|높",
+      "instruction": "목록에서 GPU Utilization, FB Memory Usage, Temperature, Power, ECC 관련 컬럼을 함께 확인합니다. 사용률이 높거나 메모리 점유가 큰 GPU, 온도나 전력 사용이 높은 GPU를 먼저 찾습니다. 필요 시 Process Info로 점유 프로세스를 함께 확인합니다. 답변은 [대상 GPU] → [높은 지표와 수치] → [점유 프로세스 여부] → [확인 필요 사항] 순서로 정리합니다."
+    },
+    {
+      "name": "GPU 간 비교 분석",
+      "trigger": "비교|차이|GPU간|서버간|왜 다르|편차",
+      "instruction": "비교할 GPU들을 선택한 뒤 하단 비교 차트에서 GPU Utilization, FB Memory Usage, Temperature, Power Rate 등의 시계열을 함께 확인합니다. 특정 GPU만 지속적으로 높거나 급격한 스파이크가 있는지 봅니다. 답변은 [비교 대상] → [차이가 큰 지표] → [지속 부하, 메모리 편중, 발열 편차 해석] 순서로 정리합니다."
+    },
+    {
+      "name": "MIG 포함 사용 현황 점검",
+      "trigger": "MIG|인스턴스|physical|partition",
+      "instruction": "GPU Type 컬럼으로 Physical과 MIG를 구분해서 봅니다. 같은 물리 GPU 아래 MIG 인스턴스들의 사용률과 메모리 점유를 함께 비교합니다. Physical은 낮아 보여도 일부 MIG 인스턴스에 부하가 집중될 수 있습니다. 답변은 [Physical/MIG 구분] → [집중된 인스턴스] → [부하 편중 여부] 순서로 정리합니다."
+    },
+    {
+      "name": "프로세스 기준 GPU 점유 확인",
+      "trigger": "프로세스|누가|점유|작업|워크로드",
+      "instruction": "Process Info와 GPU Utilization, FB Memory Usage를 함께 확인합니다. 사용률은 낮지만 메모리 점유가 높은 경우, 또는 특정 프로세스가 여러 GPU를 점유하는 경우를 확인합니다. 필요 시 동일 프로세스가 여러 GPU에 반복되는지도 봅니다. 답변은 [프로세스명/PID] → [점유 GPU] → [연산 중심 또는 메모리 점유 중심 패턴] 순서로 정리합니다."
+    }
     ]
   },
   "counter": {
@@ -147,7 +572,6 @@
     "mxqlPaths": [],
     "tagCountCategories": [],
     "note": "series/v2 API 사용",
-    "source": "fsd/server/5_entities/cube/api/queries.ts",
     "yardApis": [
       {
         "type": "/series",
@@ -165,8 +589,22 @@
     "name": "가용성 (다운체크)",
     "description": "서버 가동 시간 및 가용성 분석",
     "mxqlPaths": [],
-    "tagCountCategories": [],
-    "note": "전용 TimeAvailability API 사용"
+    "tagCountCategories": [
+      "server_down_check"
+    ],
+    "note": "전용 TimeAvailability API 사용. SMDownCheckCore가 file DB 기록과 함께 server_down_check 태그카운트에 dual-write(addAsTagCount).",
+    "yardApis": [
+      {
+        "type": "sm",
+        "path": "/avail",
+        "description": "가용성(다운체크) 데이터"
+      },
+      {
+        "type": "sm",
+        "path": "/avail/enabled",
+        "description": "다운체크 활성화 상태 조회/변경"
+      }
+    ]
   },
   "flexible_report": {
     "name": "보고서",
