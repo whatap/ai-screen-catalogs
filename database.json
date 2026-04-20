@@ -4,6 +4,7 @@
   "$urlPrefix": "/database/",
   "$maintainer": "TODO: DB 담당자",
   "$note": "{platform}은 DB 종류에 따라 치환: postgresql, mysql, oracle, oracle_dma, mongodb, redis, mssql, db2, sap_ase, tibero, cubrid, altibase. PG/MySQL/Oracle/MSSQL은 DBX 전용 API(IS_MXQL=false), Redis/MongoDB는 MXQL path, Oracle DMA/DB2/SAP ASE는 MXQL Text.",
+  "$platformSpecificNote": "DB별로 관심 지표·분석 포커스가 다른 경우(예: MySQL의 InnoDB buffer pool, PostgreSQL의 vacuum/WAL, Oracle의 wait events), 각 화면 블록 안에 platformSpecific.{platform} 서브필드를 추가하여 override 가능. 챗봇이 context.platform으로 받아 공통 + 특화를 자동 병합. 병합 규칙: domainKnowledge/analysisGuides/catalogQueries 등 배열 필드는 concat, name/description은 override replace, platformSpecific에 없는 DB는 공통만 적용됨.",
   "instance_list": {
     "name": "인스턴스 목록",
     "description": "DB 인스턴스 목록과 상태, 핵심 성능 카운터",
@@ -39,7 +40,57 @@
         "path": "/stat_oid_series_range",
         "description": "인스턴스 시계열"
       }
-    ]
+    ],
+    "domainKnowledge": [
+      "active_sessions, commits, wait events는 모든 DB의 공통 3대 핵심 지표",
+      "buffer cache hit ratio: 캐시 적중률. 모든 관계형 DB에서 95% 이상 권장 (DB별 계산식 상이)"
+    ],
+    "platformSpecific": {
+      "postgresql": {
+        "domainKnowledge": [
+          "pg_stat_database.blks_hit / (blks_hit + blks_read) = buffer cache hit ratio (PostgreSQL 전용 뷰)",
+          "autovacuum 활동량, WAL write rate 주시 — dead tuple 누적 시 성능 저하",
+          "idle_in_transaction 세션 누적 시 vacuum이 막혀 bloat 발생"
+        ],
+        "analysisGuides": [
+          {
+            "name": "PG 성능 요약",
+            "trigger": "상태|현황|요약|성능",
+            "instruction": "1단계: db_postgresql_counter 조회 — active_sessions, commit_rate, rollback_rate\n2단계: pg_stat_database 기반 cache hit ratio 계산\n3단계: idle_in_transaction 세션 수 확인 — 많으면 vacuum 지연 경고"
+          }
+        ]
+      },
+      "mysql": {
+        "domainKnowledge": [
+          "Threads_running > 50이면 부하 주의 (동시 실행 쿼리 수)",
+          "InnoDB Buffer Pool hit ratio = 1 - (Innodb_buffer_pool_reads / Innodb_buffer_pool_read_requests) — 95% 이상 권장",
+          "QPS/TPS: Com_select / Com_insert / Com_update / Com_delete 합 기반",
+          "slow_query_log, long_query_time 설정 확인 — 슬로우 쿼리 집계"
+        ],
+        "analysisGuides": [
+          {
+            "name": "MySQL InnoDB 분석",
+            "trigger": "innodb|buffer pool|버퍼|캐시",
+            "instruction": "1단계: db_mysql_counter 조회 — Threads_running, Innodb_buffer_pool_*\n2단계: Buffer Pool hit ratio 계산 (1 - reads/read_requests) → 95% 이하면 메모리 부족 의심\n3단계: Slow_queries, Created_tmp_disk_tables 확인"
+          }
+        ]
+      },
+      "oracle": {
+        "domainKnowledge": [
+          "주요 wait events: db file sequential read, log file sync, buffer busy waits",
+          "SGA/PGA 할당 상태, Shared Pool free memory, Redo log switch 빈도 주시",
+          "Library Cache Hit Ratio, Dictionary Cache Hit Ratio 확인 — 98% 이상 권장",
+          "ASH(Active Session History)로 세션 레벨 병목 분석"
+        ],
+        "analysisGuides": [
+          {
+            "name": "Oracle Wait Event 분석",
+            "trigger": "wait|이벤트|대기|병목",
+            "instruction": "1단계: db_oracle_wait_event_last 조회 — Top wait events\n2단계: db file sequential read 높으면 인덱스 부재/비효율, log file sync 높으면 commit 과다\n3단계: SGA/PGA 사이즈 + Hit ratio 교차 확인"
+          }
+        ]
+      }
+    }
   },
   "db_dashboard": {
     "name": "멀티 인스턴스 모니터링",
