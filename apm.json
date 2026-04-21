@@ -156,14 +156,14 @@
     ],
     "domainKnowledge": [
       "JAVA 전용 - JVM 프로세스 수준 리소스 분석",
-      "app_proc_counter: gc_count, gc_time, heap_used, heap_max, cpu_time, proc_fd",
+      "app_proc_counter: gc_count, gc_time, heap_use, heap_max, cputime, proc_fd",
       "app_host_resource: 호스트 cpu, mem 사용률"
     ],
     "analysisGuides": [
       {
         "name": "JVM 리소스 진단",
         "trigger": "JVM|힙|메모리|GC|gc.*time|cpu|리소스",
-        "instruction": "1단계: app_proc_counter -> 힙 사용률(heap_used/heap_max), GC 빈도/시간\n2단계: GC time이 전체 시간의 5%+ -> GC 튜닝 필요\n3단계: app_host_resource로 CPU/메모리 시스템 레벨 확인\n4단계: 힙 부족 의심 시 heap_dump 화면 안내\n답변: [JVM 리소스 표] -> [이상 지표] -> [튜닝 권장(힙 크기/GC 알고리즘)]"
+        "instruction": "1단계: app_proc_counter -> 힙 사용률(heap_use/heap_max), GC 빈도/시간\n2단계: GC time이 전체 시간의 5%+ -> GC 튜닝 필요\n3단계: app_host_resource로 CPU(cpu)/메모리(mem) 시스템 레벨 확인\n4단계: 힙 부족 의심 시 heap_dump 화면 안내\n답변: [JVM 리소스 표] -> [이상 지표] -> [튜닝 권장(힙 크기/GC 알고리즘)]"
       }
     ]
   },
