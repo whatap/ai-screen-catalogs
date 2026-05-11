@@ -244,7 +244,7 @@
       {
         "name": "비용 최적화",
         "trigger": "최적화|비용|절감|낭비|효율|추천",
-        "instruction": "1단계 - DCGM_FI_DEV_WEIGHTED_GPU_UTIL PromQL 조회 (최소 7일)\n\n2단계 - GPU별 분류 (야간/주말 학습 GPU 주의):\n- Idle: 0% 시간대 > 70%\n- 저활용: 평균 ≤ 40%\n- 버스트: 간헐 고사용(80%+) 후 유휴\n- 고활용: 평균 > 50% 지속\n\n3단계 - @data:gpu_cost_reference 참고 비용으로 바로 분석 진행. 온프레미스면 정확한 비용을 질문하되, 답을 기다리지 말고 참고 비용으로 먼저 분석할 것.\n답변에 반드시 아래 테이블 포함:\n| GPU | 모델명 | 7일 평균 | 최대 | Pod/용도 | 분류 |\n[섹션1] 전체 현황 — 위 테이블 + GPU 수/평균 사용률\n[섹션2] Idle GPU 회수 — @data:gpu_cost_reference로 낭비 금액 계산 (시간당 비용 × 유휴 시간)\n[섹션3] 버스트 GPU — 시간대 기반 스케줄러 최적화 추천\n[섹션4] MIG 통합(A100/A30/H100/H200만)\n[섹션5] 총 절감 요약 — 절감 방법별 금액 합산\n비용 계산: modelName → @data:gpu_cost_reference 매칭. 온프레미스면 정확한 비용을 질문하되, 답을 기다리지 말고 참고 비용으로 먼저 분석 진행할 것.\n\n반드시 실제 GPU 이름+수치 명시. 추상적 조언 금지."
+        "instruction": "1단계 - DCGM_FI_DEV_WEIGHTED_GPU_UTIL PromQL 조회 (최근 24시간)\n\n2단계 - GPU별 분류 (야간/주말 학습 GPU 주의):\n- Idle: 0% 시간대 > 70%\n- 저활용: 평균 ≤ 40%\n- 버스트: 간헐 고사용(80%+) 후 유휴\n- 고활용: 평균 > 50% 지속\n\n3단계 - @data:gpu_cost_reference 참고 비용으로 바로 분석 진행. 온프레미스면 정확한 비용을 질문하되, 답을 기다리지 말고 참고 비용으로 먼저 분석할 것.\n답변에 반드시 아래 테이블 포함:\n| GPU | 모델명 | 24h 평균 | 최대 | Pod/용도 | 분류 |\n[섹션1] 전체 현황 — 위 테이블 + GPU 수/평균 사용률\n[섹션2] Idle GPU 회수 — @data:gpu_cost_reference로 낭비 금액 계산 (시간당 비용 × 유휴 시간)\n[섹션3] 버스트 GPU — 시간대 기반 스케줄러 최적화 추천\n[섹션4] MIG 통합(A100/A30/H100/H200만)\n[섹션5] 총 절감 요약 — 절감 방법별 금액 합산\n비용 계산: modelName → @data:gpu_cost_reference 매칭. 온프레미스면 정확한 비용을 질문하되, 답을 기다리지 말고 참고 비용으로 먼저 분석 진행할 것.\n\n반드시 실제 GPU 이름+수치 명시. 추상적 조언 금지."
       },
       {
         "name": "현황 요약",
@@ -353,7 +353,7 @@
       {
         "name": "비용 최적화",
         "trigger": "최적화|비용|절감|낭비|효율|개선|추천",
-        "instruction": "1단계 - 분류 기준 확인 (사용자 응답 대기, 데이터 조회 금지):\n저활용(<50%) / 활용(50~80%) / 고활용(80%+) 기준 제시 후 확인\n\n2단계 - @query:gpu_trend_hitmap(timeRange=7d) 실행\n\n3단계 - GPU별 분류: avg_value로 7일 평균 계산, 단일 숫자 표시\n야간/주말 학습 GPU는 시간대별 패턴 확인 후 분류\n\n4단계 - 답변 형식:\n| GPU | 모델명 | 7일 평균 | 최대 | Pod | 분류 |\n[섹션1] 전체 현황 — 위 테이블 + GPU 수/모델별 수량/평균 사용률\n[섹션2] 저활용 GPU — 유휴 기간 + @data:gpu_cost_reference로 낭비 금액 계산 (시간당 비용 × 유휴 시간)\n[섹션3] 고활용 GPU — 과부하 위험 + 스케일아웃 검토\n[섹션4] MIG 통합 기회(A100/A30/H100/H200만)\n[섹션5] 총 절감 기회 요약 — 절감 방법별 금액 합산\n비용 계산: modelName → @data:gpu_cost_reference 매칭. 온프레미스면 정확한 비용을 질문하되, 답을 기다리지 말고 참고 비용으로 먼저 분석 진행할 것.\n\n반드시 실제 GPU 이름+수치 명시. 추상적 조언/실행 명령어 금지."
+        "instruction": "1단계 - 분류 기준 확인 (사용자 응답 대기, 데이터 조회 금지):\n저활용(<50%) / 활용(50~80%) / 고활용(80%+) 기준 제시 후 확인\n\n2단계 - @query:gpu_trend_hitmap(timeRange=1d) 실행\n\n3단계 - GPU별 분류: avg_value로 24h 평균 계산, 단일 숫자 표시\n야간/주말 학습 GPU는 시간대별 패턴 확인 후 분류\n\n4단계 - 답변 형식:\n| GPU | 모델명 | 24h 평균 | 최대 | Pod | 분류 |\n[섹션1] 전체 현황 — 위 테이블 + GPU 수/모델별 수량/평균 사용률\n[섹션2] 저활용 GPU — 유휴 기간 + @data:gpu_cost_reference로 낭비 금액 계산 (시간당 비용 × 유휴 시간)\n[섹션3] 고활용 GPU — 과부하 위험 + 스케일아웃 검토\n[섹션4] MIG 통합 기회(A100/A30/H100/H200만)\n[섹션5] 총 절감 기회 요약 — 절감 방법별 금액 합산\n비용 계산: modelName → @data:gpu_cost_reference 매칭. 온프레미스면 정확한 비용을 질문하되, 답을 기다리지 말고 참고 비용으로 먼저 분석 진행할 것.\n\n반드시 실제 GPU 이름+수치 명시. 추상적 조언/실행 명령어 금지."
       },
       {
         "name": "현황 요약",
@@ -371,6 +371,65 @@
         "description": "GPU 트렌드 히트맵 데이터 (가중치 GPU 사용률 + 라벨 JOIN)",
         "template": "kv.load {table: stat_gpu_trend_hitmap-$epoch}\nFILTER {key: t, over: $stime}\nFILTER {key: t, under: $etime}\nSELECT [t, UUID, value, max_value, min_value]\nUNFOLD [UUID, value, max_value, min_value]\nRENAME {src:value, dst:avg_value}\nJOIN {query: label_info, pk: UUID, type: inner}\nSUB label_info\n>> match DCGM_FI_DEV_WEIGHTED_GPU_UTIL\nLAST-ONLY [UUID]\nEND",
         "note": "$epoch = 해당 월 1일 00:00 UTC 밀리초 (예: 2026-04-01 → 1775001600000). 반환 필드: UUID, avg_value, max_value, min_value, t, modelName, Hostname, gpu, pod, namespace, project, container, node, cluster. 반드시 whatap_yard_query(type=\"mxql\", path=\"text\", params={mql: \"...\", stime: ..., etime: ...})로 호출할 것. whatap_query_data는 이 쿼리에 사용 불가."
+      }
+    ]
+  },
+  "gpu/workload": {
+    "name": "GPU 워크로드 모니터링",
+    "description": "K8s GPU 워크로드를 whatap_kube_label_gpu_group 또는 namespace 단위로 그룹핑 — 요약 카드 + 서비스 그룹 카드 + 사용률 추이 + 파드 목록 (whatap-front PR #6594, KUBER-1257)",
+    "toolRouting": [
+      {
+        "id": "gpu-workload-no-docs-metrics",
+        "description": "이 화면의 GPU/Pod 메트릭은 DCGM PromQL + MXQL kube_pod 직접 조회 — docs_search 불필요",
+        "when": {
+          "toolCalled": "docs_search",
+          "argMatches": {
+            "query": "GPU|pod|workload|util|memory|namespace|워크로드|파드|메모리|사용률"
+          }
+        },
+        "block": {
+          "message": "이 화면은 DCGM PromQL 메트릭 + MXQL kube_pod 조인을 직접 조회합니다. PromQL (DCGM_FI_DEV_GPU_UTIL / WEIGHTED_GPU_UTIL / FB_USED) 또는 MXQL CATEGORY kube_pod 를 사용하세요 — docs_search 불필요."
+        }
+      }
+    ],
+    "mxqlPaths": [],
+    "tagCountCategories": [
+      "kube_pod",
+      "container"
+    ],
+    "promqlMetrics": [
+      "DCGM_FI_DEV_WEIGHTED_GPU_UTIL",
+      "DCGM_FI_DEV_GPU_UTIL",
+      "DCGM_FI_PROF_GR_ENGINE_ACTIVE",
+      "DCGM_FI_DEV_FB_USED",
+      "DCGM_FI_DEV_FB_FREE"
+    ],
+    "domainKnowledge": [
+      "그룹 차원: groupBy = whatap_kube_label_gpu_group (사용자 정의 Pod 라벨) 또는 namespace. 5개 요약 카드 / 서비스 그룹 카드 / 추이 차트 / 파드 목록 모두 선택된 그룹을 반영.",
+      "MIG 인스턴스 수 = DCGM_FI_DEV_FB_USED{GPU_I_PROFILE!=\"\"} (라벨 GPU_I_PROFILE 값 있음 = MIG slice). 물리 GPU 수 = unique UUID 개수.",
+      "총 Pod 수 = count(count by (pod, namespace)(DCGM_FI_DEV_FB_USED)) — GPU/MIG slice 한 개 이상 소유한 Pod.",
+      "메모리 사용률 = DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) — bytes 비율 계산식, 별도 메트릭 아님. ×100 하면 percent.",
+      "추이 차트는 fallback 표현식: DCGM_FI_DEV_GPU_UTIL or (DCGM_FI_PROF_GR_ENGINE_ACTIVE * 100) — 라벨 매칭된 물리 GPU(UTIL) + MIG 전용 환경(GR_ENGINE_ACTIVE 0~1 비율 × 100) 둘 다 커버.",
+      "빈 그룹 라벨 → \"Unknown\" 버킷; pod!=\"\" 매처가 항상 추가되어 Pod 미할당 GPU-only 노드는 그룹 결과를 오염시키지 않음.",
+      "Pod 목록은 MXQL passthrough + kube_pod 조인 (PromQL 내장 view 아님). UI 에서 time 컬럼 숨김.",
+      "추이 기간: preset (1h/6h/24h/7d) + 사용자 지정 최대 30일. 클라이언트 상태, 별도 API 없음.",
+      "최소 사이드바 버전: 1.8.7 (이전 버전은 메뉴 숨김)."
+    ],
+    "analysisGuides": [
+      {
+        "name": "화면 설명",
+        "trigger": "설명|화면|뭐 보여|개요|describe|screen",
+        "instruction": "다음 순서로 설명: (1) 요약 카드 — 물리 GPU 수, MIG 인스턴스 수, 총 Pod 수, 평균 GPU 사용률(%), 평균 메모리 사용률(%). (2) 서비스 그룹 카드 — whatap_kube_label_gpu_group 또는 namespace 로 그룹핑, 색상 구분, Show All 토글. (3) GPU 사용률 추이 차트 — 그룹별, 기간 preset 1h/6h/24h/7d 또는 사용자 지정 최대 30일. (4) Pod 목록 — MXQL kube_pod 조인, 정렬/필터 지원. 사용자가 옵션바에서 groupBy 와 time-range 토글."
+      },
+      {
+        "name": "그룹 사용률 분석",
+        "trigger": "그룹|워크로드|서비스|namespace|group|workload",
+        "instruction": "1단계 - 사용자에게 groupBy 확인 (whatap_kube_label_gpu_group vs namespace).\n2단계 - PromQL: avg by (<groupBy>) (DCGM_FI_DEV_GPU_UTIL or (DCGM_FI_PROF_GR_ENGINE_ACTIVE * 100)) 선택된 기간 동안.\n3단계 - 표 포맷: | 그룹 | Pod 수 | 평균 사용률 | 최대 사용률 | 평균 메모리 사용률 |.\n4단계 - 낭비 (평균 사용률 < 10% + 유휴 시간 > 70%) 및 과부하 위험 (평균 사용률 > 80% 지속) 플래그. 그룹명 + 수치 인용 필수."
+      },
+      {
+        "name": "Pod 단위 드릴다운",
+        "trigger": "pod|drill|specific|파드",
+        "instruction": "MXQL CATEGORY kube_pod + Hostname/UUID 로 GPU 메트릭 조인. Pod 별 GPU 사용률(%) / 메모리 사용량 / GPU 모델 / 노드 반환. 기본 정렬: GPU 사용률 desc. 특정 그룹 선택 시 그룹 라벨로 먼저 필터."
       }
     ]
   },
